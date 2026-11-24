@@ -1,0 +1,55 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+An unofficial tweak toolkit for the Steam game Slotbound (LÖVE 11.5 / LuaJIT, macOS Apple Silicon, written against game version 1.0.3). It runs extra Lua inside the live game process via `lldb`. It never modifies, decrypts, or redistributes game files — keep it that way.
+
+## Commands
+
+There is no build step, linter, or unit-test suite. All verification happens against the running game (Steam must be running, game must be installed).
+
+| Command | Purpose |
+|---|---|
+| `./launch.sh` | Launch the game with tweaks |
+| `SB_DRYRUN=1 ./launch.sh` | Check `lldb` / `python3` only; does not start the game |
+| `SB_SELFTEST=1 ./launch.sh` | Launch, then run `tools/selftest.lua`: samples the game's real symbol picker 200,000×, opens the panel with a synthetic `F8`, saves `logs/selftest.png` |
+
+`launch.sh` redirects all of its own output to `logs/launch.log`, so the terminal stays silent — read the logs to see results:
+
+- `logs/launch.log` — launcher
+- `logs/inject.log` — lldb / `inject.py` (check here first if tweaks don't appear)
+- `logs/tweaks.log` — `T.log` output from the loader and features (`SELFTEST` lines land here)
+- `logs/game.log` — game stdout/stderr
+
+`config/` and `logs/` are gitignored local state.
+
+## Architecture
+
+Three stages, each in a different runtime:
+
+1. **`launch.sh` (bash)** — strips `DYLD_*` vars (Steam's overlay injection crashes `lldb`), re-execs itself as arm64 when inherited x86_64 from Steam's Rosetta client, passes parameters to the next stage through `SB_*` env vars, runs `lldb` in batch mode, then stays alive polling the game pid so Steam sees the game as running.
+2. **`inject.py` (lldb's embedded Python)** — launches the game, breaks on `luaL_loadbuffer`, and waits for the call whose chunk name (register `x3`) is `@main.lua`. At that point `x0` is the `lua_State*`; it calls `luaL_loadfile` + `lua_pcall` on `loader.lua` through expression evaluation, then detaches. The register usage is arm64-specific. Any failure is logged and the game continues unmodified.
+3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, and loads each name in `FEATURES` from `features/<name>.lua`.
+
+### Constraints inside the game's Lua state
+
+- **Do not wrap `love.update` / `love.draw`.** The game re-wraps them itself and wrapping again caused a stack overflow. The loader hooks `love.graphics.present` (per-frame `update` then `draw`), `love.handlers.<event>` (input, with swallow support), and global `require` (`onRequire`) instead.
+- **Use `T.loadLua(relpath)`, not `loadfile`/`require`**, for this repo's files: the game's bootstrap replaces `loadfile` with one that only accepts its encrypted package.
+- It's Lua 5.1 / LuaJIT: `loadstring`, `setfenv`, `unpack`.
+- The game's source is not available. Game internals are reached through `package.loaded["src...."]` and by scanning closures with `debug.getupvalue` / `debug.setupvalue` using structural fingerprints (e.g. the weighted picker is identified by its upvalues `(constants, {"W","A","S","M","H","D"})`; the cores module's private state is found as an upvalue of `cores.finishSpinModifiers`). These are the parts most likely to break on a game update; guard them and fail soft.
+
+### Features
+
+A feature file returns `function(T) return F end`; `F` may define `update(dt)`, `draw()`, `keypressed`, `mousepressed`, `mousereleased` (return `true` to swallow), and `onRequire(name, module)`. Every call is `pcall`ed; a feature that throws is marked `_broken`, logged, and skipped from then on. To add one: create the file, add its name to `FEATURES` in `loader.lua`, and document it in the README's feature table.
+
+Per-feature settings live in `config/<name>.lua` via `T.config.load(name, defaults)` (merges with defaults, type-checked, creates the file if missing) and `T.config.save`.
+
+### Leaderboard guard (must be preserved)
+
+The game has online leaderboards. Any feature that changes gameplay must call `T.taint("<reason>")` while it is active. The loader wraps `src.leaderboard`'s `submit` and blocks it for the rest of the session once tainted (taint is never cleared; only a restart resets it). Do not weaken or bypass this.
+
+### Symbol Odds specifics
+
+The game reads `require("src.data.constants").slot.symbolWeights` on every roll. Some cores temporarily swap that table for one spin and restore it from `_baseSymbolWeights` in the cores module's private state. `symbol_odds.lua` therefore writes to **both**: the base copy always, and the live table only when no core effect is currently applied (`_weightsApplied`), so core effects still stack on top of the user's weights.
