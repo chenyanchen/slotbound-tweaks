@@ -3,6 +3,8 @@
 An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS.
 It adds in-game panels for adjusting how the game plays, without modifying any game file.
 
+![The Symbol Odds panel with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
+
 > **Disclaimer.** This project is not affiliated with, endorsed by, or supported by Optima Arch, the developer of Slotbound.
 > It is intended for personal, single-player use on a copy of the game you own.
 > It does not contain, redistribute, or decrypt any game code or assets.
