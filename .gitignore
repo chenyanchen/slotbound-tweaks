@@ -1,0 +1,5 @@
+# local state
+/config/
+/logs/
+.DS_Store
+__pycache__/
