@@ -64,6 +64,8 @@ Same steps, with `launch.bat` instead of `launch.sh`:
   "C:\absolute\path\to\slotbound-tweaks\launch.bat" %command%
   ```
 
+  With a launch option set, Steam itself writes `steam_appid.txt` into the game folder. It is harmless and does not come from this project.
+
 ## Symbol Odds panel
 
 | Key | Action |
