@@ -192,7 +192,7 @@ return function(T)
       return
     end
     if i > #list + 1 then i = #list + 1 end
-    if i > capacity(ui) then tab.flash("The item inventory is full."); return end
+    if i > capacity(ui) then tab.flash("All item slots are full."); return end
     local keys = ui._itemPurchasedKeys
     if type(keys) ~= "table" then keys = {}; ui._itemPurchasedKeys = keys end
     for k = 1, #list do keys[k] = keys[k] or newKey(ui) end
@@ -251,11 +251,11 @@ return function(T)
       if tonumber(d.stage) then m = m .. string.format("  stage %d item", d.stage) end
       return m
     end,
-    help = "Click a slot, then an item   Up/Down slot   Left/Right level   Del remove   "
+    help = "Click a slot, then an item   Up/Down slot   Left/Right level   Del delete   "
       .. "Changes apply from the next battle",
     sections = {
       {
-        title = function(ui) return string.format("Owned  %d/%d", #owned(ui), capacity(ui)) end,
+        title = function(ui) return string.format("Item slots  %d/%d", #owned(ui), capacity(ui)) end,
         slots = capacity,
         selectable = function(ui) return math.min(#owned(ui) + 1, capacity(ui)) end,
         get = function(ui, i) return owned(ui)[i] end,
@@ -267,12 +267,12 @@ return function(T)
         remove = removeOwned,
       },
       {
-        title = function() return "Shop offers" end,
+        title = function() return "Shop" end,
         slots = function(ui) return type(ui._itemOffers) == "table" and #ui._itemOffers or 0 end,
         get = function(ui, j) return ui._itemOffers[j] end,
         put = putOffer,
         mark = "offer",
-        noneText = "(no offers right now)",
+        noneText = "(nothing in the shop right now)",
         right = function(ui, j, d)
           local bought = type(ui._itemShopPurchased) == "table" and ui._itemShopPurchased or {}
           local sold = bought[j] or bought[tostring(j)]

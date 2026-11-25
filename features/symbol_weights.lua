@@ -1,4 +1,4 @@
--- Symbol Odds: edit the slot machine's symbol weights in-game (F8 panel tab).
+-- Symbol Weights: edit the slot machine's symbol weights in-game (F8 panel tab).
 --
 -- How the game rolls symbols (v1.0.3):
 --   src/game/slot.lua picks W/A/S/M/H/D by weight from
@@ -10,18 +10,34 @@
 
 return function(T)
   local ORDER = { "W", "A", "S", "M", "H", "D" }
-  local NAMES = { W = "Warrior", A = "Archer", S = "Spear", M = "Mage", H = "Horse", D = "Duelist" }
+  local NAMES = { W = "Warrior", A = "Archer", S = "Spearman", M = "Mage", H = "Cavalry", D = "Duelist" }
   local FALLBACK_DEFAULTS = { W = 0.2, A = 0.2, S = 0.2, M = 0.15, H = 0.15, D = 0.1 }
   local STEP, BIG_STEP = 0.01, 0.05
   local REPEAT_DELAY, REPEAT_FAST, REPEAT_FASTEST, ACCEL_AFTER = 0.35, 0.07, 0.03, 1.5
 
   local F = {
-    cfg = T.config.load("symbol_odds", { enabled = true, weights = {} }),
     defaults = nil,
     sel = 1,
     checkTimer = 0,
     hit = {},
   }
+
+  -- This feature used to be called Symbol Odds (config/symbol_odds.lua).
+  do
+    local DEFAULTS = { enabled = true, weights = {} }
+    local new = io.open(T.config.path("symbol_weights"), "r")
+    local old = not new and io.open(T.config.path("symbol_odds"), "r")
+    if new then new:close() end
+    if old then
+      old:close()
+      F.cfg = T.config.load("symbol_odds", DEFAULTS)
+      T.config.save("symbol_weights", F.cfg)
+      os.remove(T.config.path("symbol_odds"))
+      T.log("symbol_weights: migrated config/symbol_odds.lua")
+    else
+      F.cfg = T.config.load("symbol_weights", DEFAULTS)
+    end
+  end
 
   local function copy(src)
     local t = {}
@@ -41,7 +57,7 @@ return function(T)
   local function save()
     local w = {}
     for _, k in ipairs(ORDER) do w[k] = round2(F.cfg.weights[k] or 0) end
-    T.config.save("symbol_odds", { enabled = F.cfg.enabled, weights = w })
+    T.config.save("symbol_weights", { enabled = F.cfg.enabled, weights = w })
   end
 
   --------------------------------------------------------------------------
@@ -83,7 +99,7 @@ return function(T)
         if tonumber(F.defaults[k]) == nil then F.defaults[k] = FALLBACK_DEFAULTS[k] end
         if tonumber(F.cfg.weights[k]) == nil or F.cfg.weights[k] < 0 then F.cfg.weights[k] = F.defaults[k] end
       end
-      T.log("symbol_odds: game defaults W=%.3f A=%.3f S=%.3f M=%.3f H=%.3f D=%.3f",
+      T.log("symbol_weights: game defaults W=%.3f A=%.3f S=%.3f M=%.3f H=%.3f D=%.3f",
         F.defaults.W, F.defaults.A, F.defaults.S, F.defaults.M, F.defaults.H, F.defaults.D)
     end
 
@@ -96,7 +112,7 @@ return function(T)
     if not (st and st._weightsApplied) and (force or not same(C.slot.symbolWeights, want)) then
       C.slot.symbolWeights = copy(want)
     end
-    if isModified() then T.taint("symbol odds") end
+    if isModified() then T.taint("symbol weights") end
   end
 
   --------------------------------------------------------------------------
@@ -147,7 +163,7 @@ return function(T)
     local h = F.hold
     if not h then return end
     local down = h.mouse and love.mouse.isDown(h.mouse) or (h.key and love.keyboard.isDown(h.key))
-    if not T.panel.isShowing("symbol_odds") or not down then stopHold(); return end
+    if not T.panel.isShowing("symbol_weights") or not down then stopHold(); return end
     h.t = h.t + dt
     local fires = 0
     while h.t >= h.nextAt and fires < 8 do
@@ -174,7 +190,7 @@ return function(T)
   end
 
   local inside = T.panel.inside
-  local tab = { id = "symbol_odds", title = "Symbol Odds" }
+  local tab = { id = "symbol_weights", title = "Symbol Weights" }
 
   function tab.draw(x, y, w, h, s)
     local g = love.graphics
