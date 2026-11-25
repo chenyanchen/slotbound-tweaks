@@ -14,7 +14,7 @@ There is no build step, linter, or unit-test suite. All verification happens aga
 |---|---|
 | `./launch.sh` | Launch the game with tweaks |
 | `SB_DRYRUN=1 ./launch.sh` | Check `lldb` / `python3` only; does not start the game |
-| `SB_SELFTEST=1 ./launch.sh` | Launch, then run `tools/selftest.lua`: samples the game's real symbol picker 200,000×, opens the panel with a synthetic `F8`, saves `logs/selftest.png` |
+| `SB_SELFTEST=1 ./launch.sh` | Launch, then run `tools/selftest.lua`: samples the game's real symbol picker 200,000×, opens the panel with a synthetic `F8`, saves `logs/selftest-<tab>.png` for each tab |
 
 Windows: `launch.bat` (same `SB_DRYRUN` / `SB_SELFTEST` env vars, set with `set VAR=1` first). It writes the same log files.
 
@@ -39,7 +39,7 @@ On Windows, stages 1-2 are replaced by:
 - **`launch.bat` → `launch.ps1`** — the `.bat` forces 64-bit PowerShell via `Sysnative` (Steam is 32-bit, so its child cmd.exe is too; a 32-bit debugger cannot debug the 64-bit game). `launch.ps1` finds the game through Steam's `libraryfolders.vdf`, compiles `inject.cs` with `Add-Type`, then waits on the game pid.
 - **`inject.cs`** — C# 5 (the compiler bundled with PowerShell 5.1: no `$""`, no `?.`, no `=>` members). Starts the game with `DEBUG_ONLY_THIS_PROCESS`, finds the Lua API by parsing PE exports of loaded modules (`lua51.dll` in stock LÖVE), puts an `int3` on `luaL_loadbuffer`, and checks `r9` (chunk name) / `rcx` (`lua_State*`) per the Win64 ABI. On `@main.lua` it redirects the thread to generated x64 code that calls `luaL_loadfile` + `lua_pcall` (+ `lua_tolstring`/`lua_settop` on error) and traps back with `int3`, restores the saved context, and detaches. The loader path is passed with forward slashes (loader.lua derives `ROOT` by splitting on `/`) and as an 8.3 short path if it contains non-ASCII characters.
 
-3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, and loads each name in `FEATURES` from `features/<name>.lua`.
+3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, loads `panel.lua` (the shared `F8` window, `T.panel`, first in dispatch order), then each name in `FEATURES` from `features/<name>.lua`.
 
 ### Constraints inside the game's Lua state
 
@@ -52,11 +52,17 @@ On Windows, stages 1-2 are replaced by:
 
 A feature file returns `function(T) return F end`; `F` may define `update(dt)`, `draw()`, `keypressed`, `mousepressed`, `mousereleased` (return `true` to swallow), and `onRequire(name, module)`. Every call is `pcall`ed; a feature that throws is marked `_broken`, logged, and skipped from then on. To add one: create the file, add its name to `FEATURES` in `loader.lua`, and document it in the README's feature table.
 
+UI goes in a tab of the shared panel, not a separate hotkey: `T.panel.addTab({ id, title, draw(x, y, w, h, s), keypressed(key), mousepressed(x, y, button), onShow() })`. The panel owns `F8`/`Esc`/`Tab`, swallows all keys while open and clicks on itself, and draws the shared leaderboard-status footer. Hit rects are rebuilt each frame in `draw`.
+
 Per-feature settings live in `config/<name>.lua` via `T.config.load(name, defaults)` (merges with defaults, type-checked, creates the file if missing) and `T.config.save`.
 
 ### Leaderboard guard (must be preserved)
 
 The game has online leaderboards. Any feature that changes gameplay must call `T.taint("<reason>")` while it is active. The loader wraps `src.leaderboard`'s `submit` and blocks it for the rest of the session once tainted (taint is never cleared; only a restart resets it). Do not weaken or bypass this.
+
+### Items specifics
+
+Owned items are `ui._itemPurchased` (copies of item defs plus `level`) with a parallel key list `ui._itemPurchasedKeys` (`"p<n>"`; `ui._itemPanelNextId` is the *last* id handed out, so the next key is `+1`). Shop offers are `ui._itemOffers` (references to the defs). New entries are built with the global `restorePurchasedItems({{id=, level=}})` (what a run-save load uses) and spliced in. Every created or changed entry carries the `__slotboundTweaks` marker, which survives the run save, so a modified run taints later sessions too; planted shop-offer ids are kept in `config/items.lua` until the shop rerolls them. Editing is refused on the main menu (`phase == "menu"`) and during battles (`phase == "battle"`).
 
 ### Symbol Odds specifics
 

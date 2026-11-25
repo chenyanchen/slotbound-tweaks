@@ -12,8 +12,9 @@
 --   mousereleased(x, y, button)      return true to swallow the event
 --   onRequire(name, module)          a game module was required
 -- A feature that throws is disabled (logged), the game keeps running.
+-- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel).
 
-local FEATURES = { "symbol_odds", "spin_log" }
+local FEATURES = { "symbol_odds", "items", "spin_log" }
 
 local SRC = debug.getinfo(1, "S").source:gsub("^@", "")
 local ROOT = SRC:match("^(.*)/[^/]*$") or "."
@@ -226,8 +227,20 @@ _G.require = function(name, ...)
 end
 
 ----------------------------------------------------------------------------
--- load features
+-- load the shared panel (first in dispatch order), then the features
 ----------------------------------------------------------------------------
+do
+  local ok, res = pcall(function() return T.loadLua("panel.lua")(T) end)
+  if ok and type(res) == "table" then
+    T.features.panel = res
+    T.order[#T.order + 1] = "panel"
+  else
+    log("panel failed to load: %s", tostring(res))
+    -- keep T.panel usable so features can still register tabs
+    T.panel = { addTab = function() end, isShowing = function() return false end }
+  end
+end
+
 for _, name in ipairs(FEATURES) do
   local ok, res = pcall(function() return T.loadLua("features/" .. name .. ".lua")(T) end)
   if ok and type(res) == "table" then

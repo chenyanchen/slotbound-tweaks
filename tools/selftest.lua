@@ -1,8 +1,8 @@
 -- Self-test, loaded by loader.lua only when SB_SELFTEST=1:
 --   SB_SELFTEST=1 ./launch.sh
 -- 1) samples the game's own weighted symbol picker and logs the distribution
--- 2) opens the Symbol Odds panel through a real (synthetic) F8 key event
--- 3) saves a screenshot to logs/selftest.png
+-- 2) opens the tweaks panel through a real (synthetic) F8 key event
+-- 3) saves a screenshot of every tab to logs/selftest-<tab>.png
 return function(T)
   local ORDER = { "W", "A", "S", "M", "H", "D" }
   local S = { t = 0 }
@@ -58,6 +58,14 @@ return function(T)
     T.log("SELFTEST picker x%d: %s", n, table.concat(parts, " "))
   end
 
+  local function shoot(name)
+    love.graphics.captureScreenshot(function(img)
+      local f = io.open(T.root .. "/logs/selftest-" .. name .. ".png", "wb")
+      if f then f:write(img:encode("png"):getString()); f:close() end
+      T.log("SELFTEST screenshot saved to logs/selftest-%s.png", name)
+    end)
+  end
+
   function S.update(dt)
     S.t = S.t + dt
     local odds = T.features.symbol_odds
@@ -69,15 +77,16 @@ return function(T)
     end
     if S.sampled and not S.checked and S.t > 4 then
       S.checked = true
-      T.log("SELFTEST panel open after synthetic F8: %s", tostring(odds and odds.open))
+      S.tab = 0
+      T.log("SELFTEST panel open after synthetic F8: %s", tostring(T.panel and T.panel.open))
     end
-    if S.checked and not S.shot and S.t > 5 then
-      S.shot = true
-      love.graphics.captureScreenshot(function(img)
-        local f = io.open(T.root .. "/logs/selftest.png", "wb")
-        if f then f:write(img:encode("png"):getString()); f:close() end
-        T.log("SELFTEST screenshot saved to logs/selftest.png")
-      end)
+    -- one screenshot per tab, one second apart, switching with a synthetic Tab
+    local tabs = T.panel and T.panel.tabs or {}
+    if S.checked and S.tab < #tabs and S.t > 5 + S.tab * 1.5 then
+      S.tab = S.tab + 1
+      local cur = T.panel.activeTab()
+      shoot(cur and cur.id or tostring(S.tab))
+      if S.tab < #tabs then love.event.push("keypressed", "tab", "tab", false) end
     end
   end
 
