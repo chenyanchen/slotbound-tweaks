@@ -1,6 +1,6 @@
 # Slotbound Tweaks
 
-An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS (and, experimentally, Windows).
+An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS and Windows.
 It adds an in-game panel (`F8`) for adjusting how the game plays, without modifying any game file.
 
 ![The Symbol Odds panel with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
@@ -36,7 +36,7 @@ Please keep it that way if you fork this project.
 
 - Slotbound 1.0.3 from Steam
 - **macOS:** Apple Silicon, and the Xcode Command Line Tools (for `lldb`): `xcode-select --install`
-- **Windows (experimental):** 64-bit Windows 10 or later. Nothing to install: the launcher uses the built-in Windows PowerShell 5.1.
+- **Windows:** 64-bit Windows 10 or later. Nothing to install: the launcher uses the built-in Windows PowerShell 5.1.
   Tested with Slotbound 1.0.4 (Steam) on Windows Server 2022, launched both from a terminal and through the Steam launch option.
 
 ## Install & launch
