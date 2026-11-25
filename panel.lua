@@ -110,6 +110,28 @@ return function(T)
     return r
   end
 
+  -- The game draws its own pixel cursor (global cursorImage) at the end of
+  -- love.draw, so the panel, drawn later at present time, covers it. Draw it
+  -- again on top, the way the game does.
+  local function drawGameCursor()
+    local img = rawget(_G, "cursorImage")
+    if type(img) ~= "userdata" or rawget(_G, "hideCursor") then return end
+    -- the game's visibility check (gamepad mode, mouse focus, ...); its
+    -- optional arguments are not mouse coordinates, the defaults are what we want
+    local shown = rawget(_G, "__slotCursorShown")
+    if type(shown) == "function" then
+      local ok, vis = pcall(shown)
+      if ok and not vis then return end
+    end
+    local mx, my = love.mouse.getPosition()
+    local sc = tonumber(rawget(_G, "screenScale")) or 1
+    local hx = tonumber(rawget(_G, "cursorHotspotX")) or 0
+    local hy = tonumber(rawget(_G, "cursorHotspotY")) or 0
+    love.graphics.setShader()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(img, math.floor(mx - hx * sc), math.floor(my - hy * sc), 0, sc, sc)
+  end
+
   function P.draw()
     if not P.open then return end
     local g = love.graphics
@@ -156,6 +178,7 @@ return function(T)
       g.setColor(1, 1, 1, 1)
       call(cur, "draw", P.content[1], P.content[2], P.content[3], P.content[4], s)
     end
+    pcall(drawGameCursor)
     g.pop()
   end
 
