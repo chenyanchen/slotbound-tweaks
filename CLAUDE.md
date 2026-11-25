@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An unofficial tweak toolkit for the Steam game Slotbound (LÖVE 11.5 / LuaJIT, written against game version 1.0.3). It runs extra Lua inside the live game process: via `lldb` on macOS Apple Silicon, and via a small built-in debugger (`inject.cs`) on Windows x64 (experimental; verified with Slotbound 1.0.4 on Windows Server 2022, from a terminal and via the Steam launch option). It never modifies, decrypts, or redistributes game files — keep it that way.
+An unofficial tweak toolkit for the Steam game Slotbound (LÖVE 11.5 / LuaJIT, written against game version 1.0.3). It runs extra Lua inside the live game process: via `lldb` on macOS Apple Silicon, and via a small built-in debugger (`inject.cs`) on Windows x64 (verified with Slotbound 1.0.4 on Windows Server 2022, from a terminal and via the Steam launch option). It never modifies, decrypts, or redistributes game files — keep it that way.
 
 ## Commands
 
