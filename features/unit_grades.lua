@@ -2,39 +2,60 @@
 -- (F8 panel tab, built on weights.lua).
 --
 -- How the game rolls grades (v1.0.3):
---   src/game/battlefield.lua spawn() reads
+--   battlefield.spawn() (the global `battlefield` object) reads
 --   require("src.data.constants").unitGrades.probabilities fresh on every
 --   spawn, passes it through require("src.game.luck").grade.boostedProbs
 --   (the rare/legendary pity: returns a boosted copy, or nil for no boost),
---   then rolls along unitGrades.order: normal, advanced, rare, legendary,
---   prism. The probabilities sum to 1; anything left over falls back to
---   normal. src/ui/upgrade.lua applyUpgradeEffects() rewrites the table from
---   the meta upgrades, so a rewrite we did not make becomes the new default.
+--   then rolls along unitGrades.order (normal, advanced, rare, legendary,
+--   prism at 1.0.3). The rolled grades should sum to 1; anything left over
+--   falls back to normal. src/ui/upgrade.lua applyUpgradeEffects() rewrites
+--   the table from the meta upgrades, so a rewrite we did not make becomes
+--   the new default.
+--
+-- The grades listed are unitGrades.order and their names the game's
+-- grade.label.<grade>, so grades the game adds later show up on their own.
 --
 -- While the odds differ from the game's, the pity boost is switched off so
 -- the odds shown are the odds rolled. Stone packs, core effects (Joker Grin,
 -- Golden Lever) and promotions have their own grade paths and are untouched.
 
 return function(T)
-  local GRADES = { "normal", "advanced", "rare", "legendary", "prism" }
-  local LABELS = { normal = "Normal", advanced = "Advanced", rare = "Rare", legendary = "Legendary", prism = "Prism" }
-  local FALLBACK_DEFAULTS = { normal = 0.83, advanced = 0.15, rare = 0.02, legendary = 0, prism = 0 }
-
   local F = {
     cfg = T.config.load("unit_grades", { enabled = true, weights = {} }),
-    defaults = nil, -- the game's own probabilities (normalized), by grade
+    game = nil,     -- the game's own probabilities, as it wrote them
+    defaults = nil, -- the same, normalized (what the white ticks show)
     written = nil,  -- what we last wrote, to notice the game rewriting it
     checkTimer = 0,
   }
 
+  --------------------------------------------------------------------------
+  -- game access
+  --------------------------------------------------------------------------
+  local function unitGrades()
+    local C = package.loaded["src.data.constants"]
+    local ug = type(C) == "table" and C.unitGrades
+    if type(ug) == "table" and type(ug.probabilities) == "table" and type(ug.order) == "table" then return ug end
+    return nil
+  end
+
+  -- the rolled grades, in the game's order
+  local function grades()
+    local ug = unitGrades()
+    local out = {}
+    for _, g in ipairs(ug and ug.order or {}) do
+      if type(g) == "string" then out[#out + 1] = g end
+    end
+    return out
+  end
+
   local function copy(src)
     local t = {}
-    for _, g in ipairs(GRADES) do t[g] = tonumber(src and src[g]) or 0 end
+    for _, g in ipairs(grades()) do t[g] = tonumber(src and src[g]) or 0 end
     return t
   end
 
   local function same(a, b)
-    for _, g in ipairs(GRADES) do
+    for _, g in ipairs(grades()) do
       if math.abs((tonumber(a and a[g]) or 0) - (tonumber(b and b[g]) or 0)) > 1e-9 then return false end
     end
     return true
@@ -42,9 +63,9 @@ return function(T)
 
   local function normalized(w)
     local t, sum = copy(w), 0
-    for _, g in ipairs(GRADES) do sum = sum + t[g] end
+    for _, g in ipairs(grades()) do sum = sum + t[g] end
     if sum <= 0 then return nil end
-    for _, g in ipairs(GRADES) do t[g] = t[g] / sum end
+    for _, g in ipairs(grades()) do t[g] = t[g] / sum end
     return t
   end
 
@@ -52,7 +73,9 @@ return function(T)
 
   local function save()
     local w = {}
-    for _, g in ipairs(GRADES) do w[g] = round2(tonumber(F.cfg.weights[g]) or 0) end
+    for k, v in pairs(F.cfg.weights) do
+      if tonumber(v) then w[k] = round2(tonumber(v)) end
+    end
     T.config.save("unit_grades", { enabled = F.cfg.enabled, weights = w })
   end
 
@@ -60,15 +83,6 @@ return function(T)
     if not (F.cfg.enabled and F.defaults) then return false end
     local want = normalized(F.cfg.weights)
     return want ~= nil and not same(want, F.defaults)
-  end
-
-  --------------------------------------------------------------------------
-  -- game access
-  --------------------------------------------------------------------------
-  local function probabilities()
-    local C = package.loaded["src.data.constants"]
-    local ug = type(C) == "table" and C.unitGrades
-    return type(ug) == "table" and type(ug.probabilities) == "table" and ug.probabilities or nil
   end
 
   -- Switch the pity boost off while our odds are in effect.
@@ -87,23 +101,27 @@ return function(T)
   end
 
   local function apply(force)
-    local probs = probabilities()
-    if not probs then return end
+    local ug = unitGrades()
+    if not ug or #grades() == 0 then return end
+    local probs = ug.probabilities
     hookPity()
 
     -- first look, or the game rewrote the table (meta upgrades): new defaults
-    if not F.defaults or (F.written and not same(probs, F.written)) then
-      F.defaults = normalized(probs) or copy(FALLBACK_DEFAULTS)
-      for _, g in ipairs(GRADES) do
+    if not F.game or (F.written and not same(probs, F.written)) then
+      F.game = copy(probs)
+      F.defaults = normalized(F.game) or copy(F.game)
+      local parts = {}
+      for _, g in ipairs(grades()) do
         if tonumber(F.cfg.weights[g]) == nil or F.cfg.weights[g] < 0 then F.cfg.weights[g] = round2(F.defaults[g]) end
+        parts[#parts + 1] = string.format("%s=%.3f", g, F.defaults[g])
       end
-      T.log("unit_grades: game defaults normal=%.3f advanced=%.3f rare=%.3f legendary=%.3f prism=%.3f",
-        F.defaults.normal, F.defaults.advanced, F.defaults.rare, F.defaults.legendary, F.defaults.prism)
+      T.log("unit_grades: game defaults %s", table.concat(parts, " "))
     end
 
-    local want = isModified() and normalized(F.cfg.weights) or F.defaults
+    -- ours (normalized) while modified, otherwise exactly what the game wrote
+    local want = isModified() and normalized(F.cfg.weights) or F.game
     if force or not same(probs, want) then
-      for _, g in ipairs(GRADES) do probs[g] = want[g] end -- in place: keeps `special` and any other keys
+      for _, g in ipairs(grades()) do probs[g] = want[g] end -- in place: keeps `special` and any other keys
     end
     F.written = copy(probs)
     if isModified() then T.taint("unit grades") end
@@ -113,14 +131,22 @@ return function(T)
   -- panel tab (weights.lua)
   --------------------------------------------------------------------------
   local function gradeColor(g)
-    local C = package.loaded["src.data.constants"]
-    local c = type(C) == "table" and type(C.unitGrades) == "table" and type(C.unitGrades.colors) == "table"
-      and C.unitGrades.colors[g]
+    local ug = unitGrades()
+    local c = ug and type(ug.colors) == "table" and ug.colors[g]
     return type(c) == "table" and c or { 1, 1, 1 }
   end
 
-  local rows = {}
-  for _, g in ipairs(GRADES) do rows[#rows + 1] = { key = g, label = LABELS[g], color = function() return gradeColor(g) end } end
+  local function gradeLabel(g)
+    return T.picker.enText("grade.label." .. g) or (g:sub(1, 1):upper() .. g:sub(2))
+  end
+
+  local function rows()
+    local out = {}
+    for _, g in ipairs(grades()) do
+      out[#out + 1] = { key = g, label = gradeLabel(g), color = function() return gradeColor(g) end }
+    end
+    return out
+  end
 
   local editor = T.weights.tab({
     id = "unit_grades", title = "Unit Grades",

@@ -1,20 +1,19 @@
 -- Symbol Weights: edit the slot machine's symbol weights in-game (F8 panel tab).
 --
 -- How the game rolls symbols (v1.0.3):
---   src/game/slot.lua picks W/A/S/M/H/D by weight from
+--   src/game/slot.lua picks the unit symbols (W/A/S/M/H/D) by weight from
 --   require("src.data.constants").slot.symbolWeights, read fresh on every roll.
+--   The symbols listed here are the keys of that table, so symbols the game
+--   adds later show up on their own.
 --   Some cores (MirageGoblet, OldCrown, SporeShroom, BanStamp) temporarily swap
 --   that table for one spin, keeping a copy of the "base" weights in the cores
 --   module's private state (_baseSymbolWeights) and restoring it afterwards.
 --   This feature replaces the base weights, so core effects still stack on top.
 
 return function(T)
-  local ORDER = { "W", "A", "S", "M", "H", "D" }
-  local NAMES = { W = "Warrior", A = "Archer", S = "Spearman", M = "Mage", H = "Cavalry", D = "Duelist" }
-  local FALLBACK_DEFAULTS = { W = 0.2, A = 0.2, S = 0.2, M = 0.15, H = 0.15, D = 0.1 }
-
   local F = {
-    defaults = nil,
+    defaults = nil, -- the game's own weights, by symbol
+    keys = nil,     -- the game's symbols, in display order (known once defaults are)
     checkTimer = 0,
   }
 
@@ -42,7 +41,7 @@ return function(T)
   end
 
   local function same(a, b)
-    for _, k in ipairs(ORDER) do
+    for _, k in ipairs(F.keys or {}) do
       if math.abs((tonumber(a and a[k]) or 0) - (tonumber(b and b[k]) or 0)) > 1e-9 then return false end
     end
     return true
@@ -52,7 +51,9 @@ return function(T)
 
   local function save()
     local w = {}
-    for _, k in ipairs(ORDER) do w[k] = round2(F.cfg.weights[k] or 0) end
+    for k, v in pairs(F.cfg.weights) do
+      if tonumber(v) then w[k] = round2(tonumber(v)) end
+    end
     T.config.save("symbol_weights", { enabled = F.cfg.enabled, weights = w })
   end
 
@@ -90,16 +91,23 @@ return function(T)
 
     if not F.defaults then
       local base = (st and st._weightsApplied and st._baseSymbolWeights) or C.slot.symbolWeights
-      F.defaults = copy(base)
-      for _, k in ipairs(ORDER) do
-        if tonumber(F.defaults[k]) == nil then F.defaults[k] = FALLBACK_DEFAULTS[k] end
-        if tonumber(F.cfg.weights[k]) == nil or F.cfg.weights[k] < 0 then F.cfg.weights[k] = F.defaults[k] end
+      if type(base) ~= "table" then return end
+      local keys, defaults = T.gameSymbols(base), {}
+      if #keys == 0 then return end
+      for _, k in ipairs(keys) do defaults[k] = tonumber(base[k]) end
+      F.defaults, F.keys = defaults, keys
+      local parts = {}
+      for _, k in ipairs(keys) do
+        if tonumber(F.cfg.weights[k]) == nil or F.cfg.weights[k] < 0 then F.cfg.weights[k] = defaults[k] end
+        parts[#parts + 1] = string.format("%s=%.3f", k, defaults[k])
       end
-      T.log("symbol_weights: game defaults W=%.3f A=%.3f S=%.3f M=%.3f H=%.3f D=%.3f",
-        F.defaults.W, F.defaults.A, F.defaults.S, F.defaults.M, F.defaults.H, F.defaults.D)
+      T.log("symbol_weights: game defaults %s", table.concat(parts, " "))
     end
 
-    local want = F.cfg.enabled and F.cfg.weights or F.defaults
+    -- only the game's symbols, so stale config entries never reach the game
+    local src = F.cfg.enabled and F.cfg.weights or F.defaults
+    local want = {}
+    for _, k in ipairs(F.keys) do want[k] = tonumber(src[k]) or 0 end
     -- While a core effect is active this spin, only swap the base: the game
     -- restores it at the end of the spin and future core effects build on it.
     if st and st._baseSymbolWeights and (force or not same(st._baseSymbolWeights, want)) then
@@ -121,9 +129,16 @@ return function(T)
     return nil
   end
 
-  local rows = {}
-  for _, k in ipairs(ORDER) do
-    rows[#rows + 1] = { key = k, label = k .. " " .. NAMES[k], icon = function() return icon(k) end }
+  -- "W Warrior": the symbol plus the game's name for its unit
+  local function rows()
+    if F.rows or not F.keys then return F.rows or {} end
+    local out = {}
+    for _, k in ipairs(F.keys) do
+      local name = T.picker.enText("merc_contract_unit_" .. k)
+      out[#out + 1] = { key = k, label = name and (k .. " " .. name) or k, icon = function() return icon(k) end }
+    end
+    F.rows = out
+    return out
   end
 
   local editor = T.weights.tab({

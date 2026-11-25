@@ -134,6 +134,42 @@ function T.font(px)
   return f
 end
 
+-- The slot machine's unit symbols: the keys of `weights` (default: the game's
+-- live constants.slot.symbolWeights), with the 1.0.3 symbols first in their
+-- usual order and any others after them, sorted.
+local KNOWN_SYMBOLS = { W = 1, A = 2, S = 3, M = 4, H = 5, D = 6 }
+function T.gameSymbols(weights)
+  if weights == nil then
+    local C = package.loaded["src.data.constants"]
+    weights = type(C) == "table" and type(C.slot) == "table" and C.slot.symbolWeights
+  end
+  local keys = {}
+  for k, v in pairs(type(weights) == "table" and weights or {}) do
+    if type(k) == "string" and tonumber(v) then keys[#keys + 1] = k end
+  end
+  table.sort(keys, function(a, b)
+    local ra, rb = KNOWN_SYMBOLS[a] or 99, KNOWN_SYMBOLS[b] or 99
+    if ra ~= rb then return ra < rb end
+    return a < b
+  end)
+  return keys
+end
+
+-- Whether `t` lists exactly the game's symbols (the weighted picker's
+-- fingerprint in src/game/slot.lua).
+function T.isSymbolList(t)
+  if type(t) ~= "table" then return false end
+  local keys = T.gameSymbols()
+  if #keys == 0 or #t ~= #keys then return false end
+  local set = {}
+  for _, k in ipairs(keys) do set[k] = true end
+  for _, s in ipairs(t) do
+    if not set[s] then return false end
+    set[s] = nil
+  end
+  return true
+end
+
 -- Mark this session as modified. Leaderboard submissions stay blocked until
 -- the game is restarted.
 function T.taint(reason)

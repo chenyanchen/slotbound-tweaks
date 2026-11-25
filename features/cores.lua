@@ -18,8 +18,6 @@
 -- restart still taints that session.
 
 return function(T)
-  local RARITY_RANK = { C = 1, U = 2, R = 3, L = 4 }
-  local RARITY_NAME = { C = "Common", U = "Uncommon", R = "Rare", L = "Legendary" }
   local picker = T.picker
 
   local F = {
@@ -96,12 +94,20 @@ return function(T)
       if ok and type(d) == "table" and d.key then list[#list + 1] = d end
     end
     table.sort(list, function(a, b)
-      local ra, rb = RARITY_RANK[a.rarity] or 9, RARITY_RANK[b.rarity] or 9
+      local ra, rb = picker.rarityRank(a.rarity), picker.rarityRank(b.rarity)
       if ra ~= rb then return ra < rb end
       return (tonumber(a.id) or 0) < (tonumber(b.id) or 0)
     end)
     F.catalog = list
     return list
+  end
+
+  local function filters()
+    if F.filters then return F.filters end
+    local list = catalog()
+    local out = picker.filtersFrom(list, function(d) return d.rarity end, picker.rarityName, picker.rarityRank)
+    if #list > 0 then F.filters = out end
+    return out
   end
 
   local function icon(d)
@@ -133,7 +139,7 @@ return function(T)
   end
 
   local function coreMeta(d)
-    local parts = { RARITY_NAME[d.rarity] or tostring(d.rarity) }
+    local parts = { picker.rarityName(d.rarity) }
     local trigger = picker.langText("core.trigger." .. d.key)
     if trigger then parts[#parts + 1] = picker.plainText(trigger) end
     if d.manualUse then parts[#parts + 1] = "manual use" end
@@ -251,7 +257,7 @@ return function(T)
     context = runCtx,
     unavailableText = "Start or continue a run to edit its cores.",
     catalog = catalog,
-    filters = { { "all", "All" }, { "C", "Common" }, { "U", "Uncommon" }, { "R", "Rare" }, { "L", "Legendary" } },
+    filters = filters,
     filterOf = function(d) return d.rarity end,
     name = coreName, effect = coreDesc, icon = icon,
     meta = coreMeta,

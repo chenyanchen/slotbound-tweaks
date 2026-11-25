@@ -47,6 +47,7 @@ On Windows, stages 1-2 are replaced by:
 - **Use `T.loadLua(relpath)`, not `loadfile`/`require`**, for this repo's files: the game's bootstrap replaces `loadfile` with one that only accepts its encrypted package.
 - It's Lua 5.1 / LuaJIT: `loadstring`, `setfenv`, `unpack`.
 - The game's source is not available. Game internals are reached through `package.loaded["src...."]` and by scanning closures with `debug.getupvalue` / `debug.setupvalue` using structural fingerprints (e.g. the weighted picker is identified by its upvalues `(constants, {"W","A","S","M","H","D"})`; the cores module's private state is found as an upvalue of `cores.finishSpinModifiers`). These are the parts most likely to break on a game update; guard them and fail soft.
+- **Don't hardcode game content.** Read lists from the game so updates that add content need no changes here: symbols via `T.gameSymbols()` (keys of `constants.slot.symbolWeights`; `T.isSymbolList(t)` for the picker fingerprint), grades via `constants.unitGrades.order`, items via `src.game.item.getAll()`, cores via `src.game.cores.getIds()`, names and labels via the game's language tables (`T.picker.langText` for the game's language, `T.picker.enText` for the panel's English labels), filters via `T.picker.filtersFrom(catalog, ...)`. Hardcode only display fallbacks (e.g. the C/U/R/L rarity names, which the game has no labels for) and make unknown values still work.
 
 ### Features
 

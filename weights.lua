@@ -6,7 +6,8 @@
 -- spec:
 --   id, title                 panel tab
 --   intro                     one line under the tab bar
---   rows = { { key, label, icon = fn() -> Image|nil, color = fn() -> {r,g,b} } }
+--   rows() -> { { key, label, icon = fn() -> Image|nil, color = fn() -> {r,g,b} } }
+--                             read from the game, so it may be empty until the game has loaded
 --   cfg                       { enabled = bool, weights = { [key] = number } }, edited in place
 --   defaults()                -> the game's weights by key, or nil while unknown
 --   save()                    persist cfg
@@ -23,7 +24,7 @@ return function(T)
   local function round2(x) return math.floor(x * 100 + 0.5) / 100 end
 
   function weights.tab(spec)
-    local rows = spec.rows
+    local rows = {}
     local E = { sel = 1, hit = {} }
     local tab = { id = spec.id, title = spec.title }
 
@@ -76,7 +77,7 @@ return function(T)
       local h = E.hold
       if not h then return end
       local down = h.mouse and love.mouse.isDown(h.mouse) or (h.key and love.keyboard.isDown(h.key))
-      if not T.panel.isShowing(spec.id) or not down then stopHold(); return end
+      if not T.panel.isShowing(spec.id) or not down or #rows == 0 then stopHold(); return end
       h.t = h.t + dt
       local fires = 0
       while h.t >= h.nextAt and fires < 8 do
@@ -94,16 +95,22 @@ return function(T)
 
     function tab.draw(x, y, w, h, s)
       local g = love.graphics
+      rows = spec.rows()
+      E.sel = math.max(1, math.min(E.sel, #rows))
       local on = cfg().enabled
       local wts = cfg().weights
       local defaults = spec.defaults()
-      local rowH = math.floor(math.min(52 * s, (h - 120 * s) / #rows))
+      local rowH = math.floor(math.min(52 * s, (h - 120 * s) / math.max(#rows, 1)))
       E.hit = {}
 
       local btn = { x + w - 150 * s, y, 150 * s, 34 * s }
       E.hit.toggle = T.panel.button(btn, on and "ON" or "OFF", T.font(18 * s), on)
       g.setFont(T.font(17 * s)); g.setColor(0.8, 0.8, 0.85, 1)
       g.print(spec.intro, x, y + 8 * s)
+      if #rows == 0 then
+        g.setColor(1, 1, 1, 0.5); g.print("Waiting for the game to load...", x, y + 60 * s)
+        return
+      end
 
       local tot, dtot = total(wts), total(defaults)
       local ry = y + 50 * s
@@ -162,6 +169,7 @@ return function(T)
     end
 
     function tab.keypressed(key)
+      if #rows == 0 then return end
       local k = rows[E.sel].key
       local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
       if key == "up" then E.sel = (E.sel - 2) % #rows + 1; startHold({ key = key, action = "sel", dir = -1 })
