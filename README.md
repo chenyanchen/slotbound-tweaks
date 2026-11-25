@@ -1,6 +1,6 @@
 # Slotbound Tweaks
 
-An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS.
+An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS (and, experimentally, Windows).
 It adds in-game panels for adjusting how the game plays, without modifying any game file.
 
 ![The Symbol Odds panel with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
@@ -31,9 +31,10 @@ Please keep it that way if you fork this project.
 
 ## Requirements
 
-- macOS on Apple Silicon
 - Slotbound 1.0.3 from Steam
-- Xcode Command Line Tools (for `lldb`): `xcode-select --install`
+- **macOS:** Apple Silicon, and the Xcode Command Line Tools (for `lldb`): `xcode-select --install`
+- **Windows (experimental):** 64-bit Windows 10 or later. Nothing to install: the launcher uses the built-in Windows PowerShell 5.1.
+  Tested with Slotbound 1.0.4 (Steam) on Windows Server 2022, launched both from a terminal and through the Steam launch option.
 
 ## Install & launch
 
@@ -52,6 +53,18 @@ Steam must be running. Then pick one of these:
 
 On first launch, macOS may ask to allow debugging (Developer Tools).
 The launcher needs this permission to attach to the game.
+
+### Windows
+
+Same steps, with `launch.bat` instead of `launch.sh`:
+
+- **Terminal:** `launch.bat` (finds the game through Steam's library folders), or `launch.bat "D:\path\to\Slotbound.exe"`
+- **Steam:** Launch Options:
+  ```
+  "C:\absolute\path\to\slotbound-tweaks\launch.bat" %command%
+  ```
+
+  With a launch option set, Steam itself writes `steam_appid.txt` into the game folder. It is harmless and does not come from this project.
 
 ## Symbol Odds panel
 
@@ -106,6 +119,9 @@ When launched from Steam, `launch.sh` takes two extra steps:
 - It removes `DYLD_*` variables, because Steam's overlay injection crashes `lldb`. As a result, the Steam overlay is unavailable while using tweaks.
 - It re-executes itself natively, because the Steam client runs under Rosetta. The game itself always runs natively (arm64).
 
+On Windows, `launch.bat` starts `launch.ps1` in 64-bit PowerShell (Steam is a 32-bit process). `launch.ps1` compiles `inject.cs` on the fly; it plays the role of `lldb` + `inject.py`.
+It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua51.dll`, and when `@main.lua` is loaded, runs a few generated instructions on the game's thread that call `luaL_loadfile` + `lua_pcall` on `loader.lua`. It then restores the thread and detaches.
+
 ## Adding a feature
 
 1. Create `features/<name>.lua`:
@@ -149,7 +165,8 @@ Logs are in `logs/`:
 
 - If injection fails, the game still starts, just without tweaks. Check `inject.log`.
 - `SB_DRYRUN=1 ./launch.sh` checks `lldb` and `python3` without starting the game.
-- `SB_SELFTEST=1 ./launch.sh` runs a self-test:
+  On Windows, `set SB_DRYRUN=1` then `launch.bat` checks PowerShell, compiles `inject.cs`, and logs where it found the game.
+- `SB_SELFTEST=1 ./launch.sh` (Windows: `set SB_SELFTEST=1` then `launch.bat`) runs a self-test:
   - samples the game's real symbol picker 200,000 times and logs the distribution;
   - opens the panel through a synthetic `F8` key event;
   - saves `logs/selftest.png`.

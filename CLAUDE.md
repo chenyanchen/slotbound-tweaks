@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An unofficial tweak toolkit for the Steam game Slotbound (LÖVE 11.5 / LuaJIT, macOS Apple Silicon, written against game version 1.0.3). It runs extra Lua inside the live game process via `lldb`. It never modifies, decrypts, or redistributes game files — keep it that way.
+An unofficial tweak toolkit for the Steam game Slotbound (LÖVE 11.5 / LuaJIT, written against game version 1.0.3). It runs extra Lua inside the live game process: via `lldb` on macOS Apple Silicon, and via a small built-in debugger (`inject.cs`) on Windows x64 (experimental; verified with Slotbound 1.0.4 on Windows Server 2022, from a terminal and via the Steam launch option). It never modifies, decrypts, or redistributes game files — keep it that way.
 
 ## Commands
 
@@ -15,6 +15,8 @@ There is no build step, linter, or unit-test suite. All verification happens aga
 | `./launch.sh` | Launch the game with tweaks |
 | `SB_DRYRUN=1 ./launch.sh` | Check `lldb` / `python3` only; does not start the game |
 | `SB_SELFTEST=1 ./launch.sh` | Launch, then run `tools/selftest.lua`: samples the game's real symbol picker 200,000×, opens the panel with a synthetic `F8`, saves `logs/selftest.png` |
+
+Windows: `launch.bat` (same `SB_DRYRUN` / `SB_SELFTEST` env vars, set with `set VAR=1` first). It writes the same log files.
 
 `launch.sh` redirects all of its own output to `logs/launch.log`, so the terminal stays silent — read the logs to see results:
 
@@ -31,6 +33,12 @@ Three stages, each in a different runtime:
 
 1. **`launch.sh` (bash)** — strips `DYLD_*` vars (Steam's overlay injection crashes `lldb`), re-execs itself as arm64 when inherited x86_64 from Steam's Rosetta client, passes parameters to the next stage through `SB_*` env vars, runs `lldb` in batch mode, then stays alive polling the game pid so Steam sees the game as running.
 2. **`inject.py` (lldb's embedded Python)** — launches the game, breaks on `luaL_loadbuffer`, and waits for the call whose chunk name (register `x3`) is `@main.lua`. At that point `x0` is the `lua_State*`; it calls `luaL_loadfile` + `lua_pcall` on `loader.lua` through expression evaluation, then detaches. The register usage is arm64-specific. Any failure is logged and the game continues unmodified.
+
+On Windows, stages 1-2 are replaced by:
+
+- **`launch.bat` → `launch.ps1`** — the `.bat` forces 64-bit PowerShell via `Sysnative` (Steam is 32-bit, so its child cmd.exe is too; a 32-bit debugger cannot debug the 64-bit game). `launch.ps1` finds the game through Steam's `libraryfolders.vdf`, compiles `inject.cs` with `Add-Type`, then waits on the game pid.
+- **`inject.cs`** — C# 5 (the compiler bundled with PowerShell 5.1: no `$""`, no `?.`, no `=>` members). Starts the game with `DEBUG_ONLY_THIS_PROCESS`, finds the Lua API by parsing PE exports of loaded modules (`lua51.dll` in stock LÖVE), puts an `int3` on `luaL_loadbuffer`, and checks `r9` (chunk name) / `rcx` (`lua_State*`) per the Win64 ABI. On `@main.lua` it redirects the thread to generated x64 code that calls `luaL_loadfile` + `lua_pcall` (+ `lua_tolstring`/`lua_settop` on error) and traps back with `int3`, restores the saved context, and detaches. The loader path is passed with forward slashes (loader.lua derives `ROOT` by splitting on `/`) and as an 8.3 short path if it contains non-ASCII characters.
+
 3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, and loads each name in `FEATURES` from `features/<name>.lua`.
 
 ### Constraints inside the game's Lua state
