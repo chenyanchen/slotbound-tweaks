@@ -24,6 +24,8 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 | **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
+Symbols, unit grades, items and cores, with their names, effects and icons, are all read from the game itself, so new content from a game update shows up without changing the tweaks.
+
 More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards

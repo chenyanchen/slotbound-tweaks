@@ -10,13 +10,8 @@ return function(T)
   local cfg = T.config.load("spin_log", { enabled = false })
   if not cfg.enabled then return {} end
 
-  local ORDER = { "W", "A", "S", "M", "H", "D" }
   local STABLE = 0.6 -- seconds the grid must stay unchanged to count as settled
   local F = { instances = setmetatable({}, { __mode = "k" }), picks = {}, events = {}, spin = 0 }
-
-  local function isSymbolList(t)
-    return type(t) == "table" and t[1] == "W" and t[6] == "D" and #t == 6
-  end
 
   -- The weighted picker is a local in slot.lua with upvalues
   -- (constants, {W,A,S,M,H,D}); slot instances' methods close over it.
@@ -31,7 +26,7 @@ return function(T)
           if type(u) == "function" then
             local _, a = debug.getupvalue(u, 1)
             local _, b = debug.getupvalue(u, 2)
-            if a == C and isSymbolList(b) then
+            if a == C and T.isSymbolList(b) then
               local orig = u
               debug.setupvalue(f, i, function(...)
                 local s = orig(...)
@@ -99,7 +94,7 @@ return function(T)
 
   local function fmtCounts(t)
     local parts, seen = {}, {}
-    for _, k in ipairs(ORDER) do
+    for _, k in ipairs(T.gameSymbols()) do
       if t[k] then parts[#parts + 1] = k .. "=" .. t[k] end
       seen[k] = true
     end
@@ -113,7 +108,7 @@ return function(T)
     local C = package.loaded["src.data.constants"]
     local w = C and C.slot and C.slot.symbolWeights or {}
     local parts = {}
-    for _, k in ipairs(ORDER) do parts[#parts + 1] = string.format("%s=%.3g", k, tonumber(w[k]) or 0) end
+    for _, k in ipairs(T.gameSymbols(w)) do parts[#parts + 1] = string.format("%s=%.3g", k, tonumber(w[k]) or 0) end
     return table.concat(parts, " ")
   end
 

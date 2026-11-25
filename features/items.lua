@@ -18,9 +18,6 @@
 
 return function(T)
   local MARK = "__slotboundTweaks"
-  local RARITY_RANK = { C = 1, U = 2, R = 3, L = 4 }
-  local RARITY_NAME = { C = "Common", U = "Uncommon", R = "Rare", L = "Legendary" }
-  local TYPE_NAME = { BATTLE = "Battle", TRAINING = "Training" }
   local picker = T.picker
 
   local F = {
@@ -70,12 +67,25 @@ return function(T)
     end
     table.sort(list, function(a, b)
       if a.type ~= b.type then return tostring(a.type) < tostring(b.type) end
-      local ra, rb = RARITY_RANK[a.rarity] or 9, RARITY_RANK[b.rarity] or 9
+      local ra, rb = picker.rarityRank(a.rarity), picker.rarityRank(b.rarity)
       if ra ~= rb then return ra < rb end
       return (tonumber(a.id) or 0) < (tonumber(b.id) or 0)
     end)
     F.catalog = list
     return list
+  end
+
+  -- "Battle", "Training", ...: the game's own label for an item type
+  local function typeLabel(t)
+    return picker.enText("item_type_" .. tostring(t):lower()) or tostring(t)
+  end
+
+  local function filters()
+    if F.filters then return F.filters end
+    local list = catalog()
+    local out = picker.filtersFrom(list, function(d) return d.type end, typeLabel)
+    if #list > 0 then F.filters = out end
+    return out
   end
 
   local function icon(d)
@@ -242,12 +252,12 @@ return function(T)
     context = runUI,
     unavailableText = "Start or continue a run to edit its items.",
     catalog = catalog,
-    filters = { { "all", "All" }, { "BATTLE", "Battle" }, { "TRAINING", "Training" } },
+    filters = filters,
     filterOf = function(d) return d.type end,
     name = itemName, effect = itemEffect, icon = icon,
     meta = function(d, level)
-      local m = string.format("%s  %s  Lv %d/%d", RARITY_NAME[d.rarity] or tostring(d.rarity),
-        TYPE_NAME[d.type] or tostring(d.type), level, maxLevel(d))
+      local m = string.format("%s  %s  Lv %d/%d", picker.rarityName(d.rarity), typeLabel(d.type),
+        level, maxLevel(d))
       if tonumber(d.stage) then m = m .. string.format("  stage %d item", d.stage) end
       return m
     end,

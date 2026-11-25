@@ -4,7 +4,6 @@
 -- 2) opens the tweaks panel through a real (synthetic) F8 key event
 -- 3) saves a screenshot of every tab to logs/selftest-<tab>.png
 return function(T)
-  local ORDER = { "W", "A", "S", "M", "H", "D" }
   local S = { t = 0 }
 
   -- The picker is a local in src/game/slot.lua whose upvalues are
@@ -22,7 +21,7 @@ return function(T)
         if n == nil then break end
         ups[i] = v
       end
-      if ups[1] == C and type(ups[2]) == "table" and ups[2][1] == "W" and #ups[2] == 6 and ups[3] == nil then
+      if ups[1] == C and T.isSymbolList(ups[2]) and ups[3] == nil then
         return f
       end
       for _, v in pairs(ups) do
@@ -49,9 +48,10 @@ return function(T)
       local s = pick(nil)
       counts[s] = (counts[s] or 0) + 1
     end
-    for _, k in ipairs(ORDER) do tot = tot + (w[k] or 0) end
+    local symbols = T.gameSymbols(w)
+    for _, k in ipairs(symbols) do tot = tot + (w[k] or 0) end
     local parts = {}
-    for _, k in ipairs(ORDER) do
+    for _, k in ipairs(symbols) do
       parts[#parts + 1] = string.format("%s=%.2f%%(want %.2f%%)", k, 100 * (counts[k] or 0) / n,
         100 * (w[k] or 0) / tot)
     end

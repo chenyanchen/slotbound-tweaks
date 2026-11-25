@@ -11,7 +11,7 @@
 --   context()                     -> ctx, lockedReason | nil (nothing to edit)
 --   unavailableText               shown when context() returns nil
 --   catalog()                     -> list of defs ({ id, rarity, ... })
---   filters = { { key, label } }, filterOf(def) -> key ("all" shows everything)
+--   filters() -> { { key, label } }, filterOf(def) -> key ("all" shows everything)
 --   name(def), effect(def, level), icon(def) -> Image|nil
 --   meta(def, level)              -> one line under the name
 --   help                          -> hint line at the bottom
@@ -34,9 +34,13 @@
 -- short message in the detail box.
 
 return function(T)
+  -- Fallbacks; the game's own shop colors are used when available.
   local RARITY_COLOR = {
     C = { 0.78, 0.78, 0.8 }, U = { 0.45, 0.86, 0.45 }, R = { 0.42, 0.66, 1 }, L = { 1, 0.64, 0.22 },
   }
+  -- The game has no labels for item/core rarities; unknown ones show their code.
+  local RARITY_NAME = { C = "Common", U = "Uncommon", R = "Rare", L = "Legendary" }
+  local RARITY_RANK = { C = 1, U = 2, R = 3, L = 4 }
   local inside = T.panel.inside
   local picker = {}
 
@@ -63,6 +67,43 @@ return function(T)
     if type(L) ~= "table" then return nil end
     local cur = L[rawget(_G, "currentGameLang") or "en"]
     return (type(cur) == "table" and cur[key]) or (type(L.en) == "table" and L.en[key]) or nil
+  end
+
+  -- A string from the game's English table (the panel's own text is English).
+  function picker.enText(key)
+    local L = package.loaded["src.data.language"]
+    return type(L) == "table" and type(L.en) == "table" and L.en[key] or nil
+  end
+
+  function picker.rarityName(r) return RARITY_NAME[r] or tostring(r) end
+
+  -- for sorting: the known rarities in order, then anything else
+  function picker.rarityRank(r) return RARITY_RANK[r] or 99 end
+
+  function picker.rarityColor(r)
+    local ui = rawget(_G, "ui")
+    local game = type(ui) == "table" and type(ui.itemShop) == "table" and type(ui.itemShop.itemLayout) == "table"
+      and ui.itemShop.itemLayout.nameRarityColors
+    local c = type(game) == "table" and game[r]
+    if type(c) == "table" and tonumber(c[1]) then return c end
+    return RARITY_COLOR[r] or RARITY_COLOR.C
+  end
+
+  -- "All" plus one filter per distinct value of key(def) in the catalog.
+  function picker.filtersFrom(list, key, label, rank)
+    local seen, values = {}, {}
+    for _, d in ipairs(list) do
+      local v = key(d)
+      if v ~= nil and not seen[v] then seen[v] = true; values[#values + 1] = v end
+    end
+    table.sort(values, function(a, b)
+      local ra, rb = rank and rank(a) or 0, rank and rank(b) or 0
+      if ra ~= rb then return ra < rb end
+      return tostring(a) < tostring(b)
+    end)
+    local out = { { "all", "All" } }
+    for _, v in ipairs(values) do out[#out + 1] = { v, label(v) } end
+    return out
   end
 
   -- "{hp.png}" style inline icons -> words; other "{name}" via values[name].
@@ -92,7 +133,7 @@ return function(T)
   end
 
   local function setRarityColor(d, a)
-    local c = RARITY_COLOR[d and d.rarity] or RARITY_COLOR.C
+    local c = picker.rarityColor(d and d.rarity)
     love.graphics.setColor(c[1], c[2], c[3], a or 1)
   end
 
@@ -242,7 +283,7 @@ return function(T)
       local cx = x + leftW + 26 * s
       local cw = x + w - cx
       local fx = cx
-      for _, f in ipairs(spec.filters or {}) do
+      for _, f in ipairs(spec.filters and spec.filters() or {}) do
         local ff = T.font(16 * s)
         local fw = ff:getWidth(f[2]) + 26 * s
         F.hit.filters[f[1]] = T.panel.button({ fx, y - 2 * s, fw, 28 * s }, f[2], ff, F.filter == f[1])
