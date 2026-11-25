@@ -12,14 +12,10 @@ return function(T)
   local ORDER = { "W", "A", "S", "M", "H", "D" }
   local NAMES = { W = "Warrior", A = "Archer", S = "Spearman", M = "Mage", H = "Cavalry", D = "Duelist" }
   local FALLBACK_DEFAULTS = { W = 0.2, A = 0.2, S = 0.2, M = 0.15, H = 0.15, D = 0.1 }
-  local STEP, BIG_STEP = 0.01, 0.05
-  local REPEAT_DELAY, REPEAT_FAST, REPEAT_FASTEST, ACCEL_AFTER = 0.35, 0.07, 0.03, 1.5
 
   local F = {
     defaults = nil,
-    sel = 1,
     checkTimer = 0,
-    hit = {},
   }
 
   -- This feature used to be called Symbol Odds (config/symbol_odds.lua).
@@ -116,71 +112,7 @@ return function(T)
   end
 
   --------------------------------------------------------------------------
-  -- editing
-  --------------------------------------------------------------------------
-  local function total()
-    local s = 0
-    for _, k in ipairs(ORDER) do s = s + (F.cfg.weights[k] or 0) end
-    return s
-  end
-
-  local function adjust(k, delta, deferSave)
-    local old = F.cfg.weights[k]
-    F.cfg.weights[k] = math.max(0, round2((old or 0) + delta))
-    if total() <= 1e-9 then F.cfg.weights[k] = old; return end -- keep one symbol rollable
-    apply(true)
-    if deferSave then F.dirty = true else save() end
-  end
-
-  local function setOnly(k)
-    for _, s in ipairs(ORDER) do F.cfg.weights[s] = (s == k) and 1 or 0 end
-    save(); apply(true)
-  end
-
-  local function resetDefaults()
-    if not F.defaults then return end
-    F.cfg.weights = copy(F.defaults)
-    save(); apply(true)
-  end
-
-  local function toggleEnabled()
-    F.cfg.enabled = not F.cfg.enabled
-    save(); apply(true)
-  end
-
-  -- hold-to-repeat (arrows and the -/+ buttons)
-  local function startHold(h)
-    h.t, h.nextAt = 0, REPEAT_DELAY
-    F.hold = h
-  end
-
-  local function stopHold()
-    F.hold = nil
-    if F.dirty then F.dirty = false; save() end
-  end
-
-  local function updateHold(dt)
-    local h = F.hold
-    if not h then return end
-    local down = h.mouse and love.mouse.isDown(h.mouse) or (h.key and love.keyboard.isDown(h.key))
-    if not T.panel.isShowing("symbol_weights") or not down then stopHold(); return end
-    h.t = h.t + dt
-    local fires = 0
-    while h.t >= h.nextAt and fires < 8 do
-      fires = fires + 1
-      h.nextAt = h.nextAt + (h.t > ACCEL_AFTER and REPEAT_FASTEST or REPEAT_FAST)
-      if h.action == "sel" then
-        F.sel = (F.sel - 1 + h.dir) % #ORDER + 1
-      else
-        local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-        if h.t > ACCEL_AFTER then step = step * 5 end
-        adjust(ORDER[F.sel], h.dir * step, true)
-      end
-    end
-  end
-
-  --------------------------------------------------------------------------
-  -- panel tab
+  -- panel tab (weights.lua)
   --------------------------------------------------------------------------
   local function icon(k)
     local assets = package.loaded["src.data.assets"]
@@ -189,99 +121,23 @@ return function(T)
     return nil
   end
 
-  local inside = T.panel.inside
-  local tab = { id = "symbol_weights", title = "Symbol Weights" }
-
-  function tab.draw(x, y, w, h, s)
-    local g = love.graphics
-    local on = F.cfg.enabled
-    local rowH = math.floor(math.min(52 * s, (h - 120 * s) / #ORDER))
-    F.hit = {}
-
-    local btn = { x + w - 150 * s, y, 150 * s, 34 * s }
-    F.hit.toggle = T.panel.button(btn, on and "ON" or "OFF", T.font(18 * s), on)
-    g.setFont(T.font(17 * s)); g.setColor(0.8, 0.8, 0.85, 1)
-    g.print("Weights the slot machine uses for each symbol.", x, y + 8 * s)
-
-    local tot = total()
-    local dtot = 0
-    for _, k in ipairs(ORDER) do dtot = dtot + ((F.defaults and F.defaults[k]) or 0) end
-    local ry = y + 50 * s
-    g.setFont(T.font(20 * s))
-    for i, k in ipairs(ORDER) do
-      local pct = tot > 0 and (F.cfg.weights[k] or 0) / tot or 0
-      local defPct = dtot > 0 and (F.defaults[k] or 0) / dtot or 0
-      if i == F.sel then
-        g.setColor(1, 1, 1, 0.08); g.rectangle("fill", x - 6 * s, ry, w + 12 * s, rowH - 4 * s, 6 * s)
-      end
-      local img = icon(k)
-      if img then
-        local iw, ih = img:getDimensions()
-        local sc = (rowH - 12 * s) / math.max(iw, ih)
-        g.setColor(1, 1, 1, on and 1 or 0.5)
-        g.draw(img, x, ry + 4 * s, 0, sc, sc)
-      end
-      local ty = ry + (rowH - 4 * s - g.getFont():getHeight()) / 2
-      g.setColor(1, 1, 1, on and 1 or 0.5)
-      g.print(string.format("%s %s", k, NAMES[k]), x + rowH, ty)
-      local bx, bh = x + 250 * s, 16 * s
-      local bw = w - 250 * s - 210 * s
-      local by = ry + (rowH - 4 * s - bh) / 2
-      g.setColor(1, 1, 1, 0.12); g.rectangle("fill", bx, by, bw, bh, 3 * s)
-      if bw * pct >= 1 then
-        g.setColor(0.95, 0.78, 0.3, on and 1 or 0.4); g.rectangle("fill", bx, by, bw * pct, bh, math.min(3 * s, bw * pct / 2))
-      end
-      g.setColor(1, 1, 1, 0.8); g.rectangle("fill", bx + bw * defPct - 1, by - 3 * s, 2, bh + 6 * s)
-      g.setColor(1, 1, 1, on and 1 or 0.5)
-      g.printf(string.format("%.1f%%", pct * 100), bx + bw + 6 * s, ty, 90 * s, "right")
-      local b1 = { x + w - 84 * s, ry + 4 * s, 38 * s, rowH - 12 * s }
-      local b2 = { x + w - 40 * s, ry + 4 * s, 38 * s, rowH - 12 * s }
-      F.hit["minus" .. k], F.hit["plus" .. k], F.hit["row" .. k] = b1, b2, { x, ry, w, rowH }
-      T.panel.button(b1, "-", T.font(20 * s))
-      T.panel.button(b2, "+", T.font(20 * s))
-      ry = ry + rowH
-    end
-
-    g.setFont(T.font(15 * s)); g.setColor(0.8, 0.8, 0.85, 1)
-    local fy = ry + 12 * s
-    g.print("Up/Down select   Left/Right +-0.01 (Shift +-0.05, hold = fast)   O only   0 zero", x, fy)
-    g.print("R reset to defaults   E toggle   (white tick = game default)", x, fy + 24 * s)
+  local rows = {}
+  for _, k in ipairs(ORDER) do
+    rows[#rows + 1] = { key = k, label = k .. " " .. NAMES[k], icon = function() return icon(k) end }
   end
 
-  function tab.keypressed(key)
-    local k = ORDER[F.sel]
-    local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-    if key == "up" then F.sel = (F.sel - 2) % #ORDER + 1; startHold({ key = key, action = "sel", dir = -1 })
-    elseif key == "down" then F.sel = F.sel % #ORDER + 1; startHold({ key = key, action = "sel", dir = 1 })
-    elseif key == "left" then adjust(k, -step, true); startHold({ key = key, action = "adj", dir = -1 })
-    elseif key == "right" then adjust(k, step, true); startHold({ key = key, action = "adj", dir = 1 })
-    elseif key == "0" then adjust(k, -(F.cfg.weights[k] or 0))
-    elseif key == "o" then setOnly(k)
-    elseif key == "r" then resetDefaults()
-    elseif key == "e" then toggleEnabled()
-    end
-  end
-
-  function tab.mousepressed(x, y, button)
-    if button ~= 1 then return end
-    if inside(F.hit.toggle, x, y) then toggleEnabled(); return end
-    local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-    for i, k in ipairs(ORDER) do
-      if inside(F.hit["minus" .. k], x, y) then
-        F.sel = i; adjust(k, -step, true); startHold({ mouse = button, action = "adj", dir = -1 }); return
-      end
-      if inside(F.hit["plus" .. k], x, y) then
-        F.sel = i; adjust(k, step, true); startHold({ mouse = button, action = "adj", dir = 1 }); return
-      end
-      if inside(F.hit["row" .. k], x, y) then F.sel = i; return end
-    end
-  end
-
-  T.panel.addTab(tab)
+  local editor = T.weights.tab({
+    id = "symbol_weights", title = "Symbol Weights",
+    intro = "Weights the slot machine uses for each symbol.",
+    rows = rows,
+    cfg = F.cfg,
+    defaults = function() return F.defaults end,
+    save = save,
+    apply = apply,
+  })
 
   function F.update(dt)
-    updateHold(dt)
-    if not F.hold and F.dirty then F.dirty = false; save() end
+    editor.update(dt)
     F.checkTimer = F.checkTimer - dt
     if F.checkTimer > 0 then return end
     F.checkTimer = 0.25

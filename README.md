@@ -19,6 +19,7 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 | Feature | Where | Description |
 |---|---|---|
 | **Symbol Weights** | `F8` → Symbol Weights | Edit the slot machine's symbol weights (Warrior, Archer, Spearman, Mage, Cavalry, Duelist). Takes effect immediately and is saved between sessions. |
+| **Unit Grades** | `F8` → Unit Grades | Edit the odds of each unit grade (Normal, Advanced, Rare, Legendary, Prism) for units spawned by winning lines. For example, always Prism. |
 | **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an item slot, change its level, delete it, or choose what the shop sells. |
 | **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
@@ -27,7 +28,7 @@ More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards
 
-Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol weights, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
+Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol weights or unit grade odds, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
 To submit scores again, reset the tweaks to defaults (or turn them off) and restart the game.
 Steam achievements are not affected.
 
@@ -98,6 +99,15 @@ The game's default weights are W 0.20, A 0.20, S 0.20, M 0.15, H 0.15, D 0.10.
 Some cores (Mirage Goblet, Old Crown, Spore Shroom, Ban Stamp) temporarily bias the weights for a spin, and those effects still stack on top of your settings.
 The Joker is not adjustable: its chance comes from cores and the game caps it at 5%.
 
+### Unit Grades tab
+
+Same keys and buttons as the Symbol Weights tab, for the five unit grades. To always get the top grade, select Prism and press `O`.
+
+The white ticks show the game's current odds, which include your meta upgrades (without any: Normal 83%, Advanced 15%, Rare 2%, Legendary and Prism 0%).
+While your odds differ from the game's, its rare/legendary pity (better odds after a long run of low-grade units) is switched off, so the percentages shown are exactly what is rolled. Turning the tab off or resetting restores the pity.
+
+Only units spawned by winning lines are affected. Stone packs, cores (such as Joker Grin or Golden Lever) and promotions change grades their own way, as usual.
+
 ### Items tab
 
 The left side lists the run's item slots (`Item slots`) and what the shop currently sells (`Shop`).
@@ -161,7 +171,8 @@ Slotbound is a LÖVE 11.5 / LuaJIT game. Its code ships encrypted, and the launc
    It also updates the base weights that cores restore after their one-spin effects.
 5. **Items** edits the run's item slots (`ui._itemPurchased`) and the shop (`ui._itemOffers`).
    New inventory entries are built with the game's own `restorePurchasedItems`, the function that loads a saved run.
-6. **Cores** adds and removes cores through the game's own `src.game.cores` `select` / `remove`, and edits the selection screen's offers (`ui._coreSelect.offers`).
+6. **Unit Grades** rewrites `src.data.constants`' `unitGrades.probabilities`, which the game reads on every unit spawn, and bypasses `src.game.luck`'s grade pity while active.
+7. **Cores** adds and removes cores through the game's own `src.game.cores` `select` / `remove`, and edits the selection screen's offers (`ui._coreSelect.offers`).
 
 When launched from Steam, `launch.sh` takes two extra steps:
 
@@ -203,7 +214,7 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
    ```
 
    `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button.
-   For a "slots + catalog" tab like Items or Cores, use `T.picker.tab(spec)` (see the comment at the top of `picker.lua`).
+   For a bar editor like Symbol Weights or Unit Grades, use `T.weights.tab(spec)` (see `weights.lua`); for a "slots + catalog" tab like Items or Cores, use `T.picker.tab(spec)` (see `picker.lua`).
 
 Other helpers:
 
