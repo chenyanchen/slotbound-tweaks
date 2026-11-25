@@ -258,7 +258,7 @@ return function(T)
     help = "Click a slot, then a core   Up/Down slot   Del remove   New cores count from the current wave",
     sections = {
       {
-        title = function(ctx) return string.format("Active cores  %d/%d", #ctx.active, capacity(ctx)) end,
+        title = function(ctx) return string.format("Cores  %d/%d", #ctx.active, capacity(ctx)) end,
         slots = capacity,
         selectable = function(ctx) return math.min(#ctx.active + 1, capacity(ctx)) end,
         get = function(ctx, i) return defOf(ctx.active[i]) end,

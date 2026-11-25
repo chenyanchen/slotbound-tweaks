@@ -3,7 +3,7 @@
 An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS and Windows.
 It adds an in-game panel (`F8`) for adjusting how the game plays, without modifying any game file.
 
-![The Symbol Odds panel with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
+![The Symbol Weights tab with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
 
 > **Disclaimer.** This project is not affiliated with, endorsed by, or supported by Optima Arch, the developer of Slotbound.
 > It is intended for personal, single-player use on a copy of the game you own.
@@ -18,8 +18,8 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 
 | Feature | Where | Description |
 |---|---|---|
-| **Symbol Odds** | `F8` → Symbol Odds | Edit the slot machine's symbol weights (Warrior, Archer, Spear, Mage, Horse, Duelist). Takes effect immediately and is saved between sessions. |
-| **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an inventory slot, change its level, remove it, or choose what the item shop offers. |
+| **Symbol Weights** | `F8` → Symbol Weights | Edit the slot machine's symbol weights (Warrior, Archer, Spearman, Mage, Cavalry, Duelist). Takes effect immediately and is saved between sessions. |
+| **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an item slot, change its level, delete it, or choose what the shop sells. |
 | **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
@@ -27,7 +27,7 @@ More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards
 
-Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol odds, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
+Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol weights, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
 To submit scores again, reset the tweaks to defaults (or turn them off) and restart the game.
 Steam achievements are not affected.
 
@@ -81,7 +81,7 @@ Same steps, with `launch.bat` instead of `launch.sh`:
 While the panel is open it takes all keyboard input; clicks outside it still reach the game.
 The panel remembers the last tab you used.
 
-### Symbol Odds tab
+### Symbol Weights tab
 
 | Key | Action |
 |---|---|
@@ -100,22 +100,22 @@ The Joker is not adjustable: its chance comes from cores and the game caps it at
 
 ### Items tab
 
-The left side lists the run's inventory (`Owned`) and the item shop's current offers (`Shop offers`).
+The left side lists the run's item slots (`Item slots`) and what the shop currently sells (`Shop`).
 The right side is the catalog of every item, filterable by type. Hover anything to see its effect in the game's language.
 
-1. Click a slot on the left: an owned item, the empty slot, or a shop offer.
+1. Click a slot on the left: an item slot (filled or the first empty one) or a shop slot.
 2. Click an item in the catalog to put it there.
-   - **Owned slot:** the item replaces what was there (or fills the empty slot) at level 1. Adjust the level with `-` / `+`, remove it with `x`.
-   - **Shop offer:** the shop now offers that item; buy it as usual, with essence.
+   - **Item slot:** the item replaces what was there (or fills the empty slot) at level 1. Adjust the level with `-` / `+`, delete it with `x`.
+   - **Shop slot:** the shop now sells that item; buy it as usual, with Essence.
 
 | Key | Action |
 |---|---|
 | `↑` / `↓` | Select a slot |
-| `←` / `→` | Level −/+ of the selected owned item |
-| `Delete` / `Backspace` | Remove the selected owned item (no refund) |
+| `←` / `→` | Level −/+ of the selected item |
+| `Delete` / `Backspace` | Delete the selected item (no refund) |
 
 In the catalog, a gold corner marks items you own and a green dot marks items in the shop.
-Each item can be owned once, and the inventory size is the game's own (6 by default, more with upgrades).
+Each item can be held once, and the number of item slots is the game's own (6 by default, more with upgrades).
 Items can't be edited on the main menu or during a battle; changes apply from the next battle.
 Some items are normally offered only on one stage ("stage N item"); you can place them anywhere, but their effect may assume that stage.
 
@@ -123,9 +123,9 @@ Edited items stay in the run's save. Continuing such a run after a restart block
 
 ### Cores tab
 
-Works like the Items tab. The left side lists the run's active cores and, while the game is offering cores, the three cards of the core selection screen. The catalog can be filtered by rarity.
+Works like the Items tab. The left side lists the run's cores (`Cores`) and, while the game is offering cores, the three cards of the core selection screen. The catalog can be filtered by rarity.
 
-- **Active core slot:** the core replaces the one there (or fills the empty slot). New cores count as picked on the current wave, and appear at the end of the list. Remove one with `x` or `Delete`.
+- **Core slot:** the core replaces the one there (or fills the empty slot). New cores count as picked on the current wave, and appear at the end of the list. Remove one with `x` or `Delete`.
 - **Core selection card:** the card now offers that core; pick it on the selection screen as usual.
 
 Each core can be active once. Cores can't be edited on the main menu, during a battle, or while the slot machine is spinning.
@@ -157,9 +157,9 @@ Slotbound is a LÖVE 11.5 / LuaJIT game. Its code ships encrypted, and the launc
    | `love.handlers` | Input |
    | `require` | Patching game modules as they load |
 
-4. **Symbol Odds** rewrites `src.data.constants`' `slot.symbolWeights`, which the game reads on every roll.
+4. **Symbol Weights** rewrites `src.data.constants`' `slot.symbolWeights`, which the game reads on every roll.
    It also updates the base weights that cores restore after their one-spin effects.
-5. **Items** edits the run's inventory (`ui._itemPurchased`) and shop offers (`ui._itemOffers`).
+5. **Items** edits the run's item slots (`ui._itemPurchased`) and the shop (`ui._itemOffers`).
    New inventory entries are built with the game's own `restorePurchasedItems`, the function that loads a saved run.
 6. **Cores** adds and removes cores through the game's own `src.game.cores` `select` / `remove`, and edits the selection screen's offers (`ui._coreSelect.offers`).
 

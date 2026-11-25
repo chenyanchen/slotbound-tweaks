@@ -15,7 +15,7 @@
 -- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel);
 -- picker.lua (T.picker) builds the slot + catalog tabs (Items, Cores).
 
-local FEATURES = { "symbol_odds", "items", "cores", "spin_log" }
+local FEATURES = { "symbol_weights", "items", "cores", "spin_log" }
 
 local SRC = debug.getinfo(1, "S").source:gsub("^@", "")
 local ROOT = SRC:match("^(.*)/[^/]*$") or "."

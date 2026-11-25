@@ -68,7 +68,7 @@ return function(T)
 
   function S.update(dt)
     S.t = S.t + dt
-    local odds = T.features.symbol_odds
+    local odds = T.features.symbol_weights
     if not S.sampled and odds and odds.defaults and S.t > 3 then
       S.sampled = true
       local ok, err = pcall(sample)
