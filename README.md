@@ -1,7 +1,7 @@
 # Slotbound Tweaks
 
 An unofficial, single-player tweak toolkit for [Slotbound](https://store.steampowered.com/app/4459590/Slotbound/) on macOS (and, experimentally, Windows).
-It adds in-game panels for adjusting how the game plays, without modifying any game file.
+It adds an in-game panel (`F8`) for adjusting how the game plays, without modifying any game file.
 
 ![The Symbol Odds panel with Duelist set to 100%: every reel lands on Duelist](docs/cover.png)
 
@@ -14,16 +14,19 @@ It adds in-game panels for adjusting how the game plays, without modifying any g
 
 ## Features
 
-| Feature | Hotkey | Description |
+All features with settings live in one panel: press `F8` to open it, `Tab` to switch tabs.
+
+| Feature | Where | Description |
 |---|---|---|
-| **Symbol Odds** | `F8` | Edit the slot machine's symbol weights (Warrior, Archer, Spear, Mage, Horse, Duelist). Takes effect immediately and is saved between sessions. |
+| **Symbol Odds** | `F8` → Symbol Odds | Edit the slot machine's symbol weights (Warrior, Archer, Spear, Mage, Horse, Duelist). Takes effect immediately and is saved between sessions. |
+| **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an inventory slot, change its level, remove it, or choose what the item shop offers. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
 More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards
 
-Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol odds), leaderboard submissions are **blocked until the game is restarted**.
+Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol odds or an edited item), leaderboard submissions are **blocked until the game is restarted**.
 To submit scores again, reset the tweaks to defaults (or turn them off) and restart the game.
 Steam achievements are not affected.
 
@@ -66,24 +69,56 @@ Same steps, with `launch.bat` instead of `launch.sh`:
 
   With a launch option set, Steam itself writes `steam_appid.txt` into the game folder. It is harmless and does not come from this project.
 
-## Symbol Odds panel
+## The panel
 
 | Key | Action |
 |---|---|
 | `F8` | Open / close the panel (`fn`+`F8` on Mac keyboards) |
+| `Tab` / `Shift`+`Tab` | Next / previous tab (also clickable) |
+| `Esc` | Close |
+
+While the panel is open it takes all keyboard input; clicks outside it still reach the game.
+The panel remembers the last tab you used.
+
+### Symbol Odds tab
+
+| Key | Action |
+|---|---|
 | `↑` / `↓` | Select a symbol (hold to repeat) |
 | `←` / `→` | Weight −/+ 0.01, or 0.05 with `Shift`. Hold to repeat; holding for more than 1.5 s speeds up. The `-`/`+` buttons behave the same. |
 | `O` | Only the selected symbol (100%) |
 | `0` | Set the selected weight to 0 |
 | `R` | Reset to the game's defaults |
 | `E` | Toggle the feature on/off (off = game defaults) |
-| `Esc` | Close |
 
 Percentages are weight ÷ total weight. The white tick on each bar marks the game's default probability.
 The game's default weights are W 0.20, A 0.20, S 0.20, M 0.15, H 0.15, D 0.10.
 
 Some cores (Mirage Goblet, Old Crown, Spore Shroom, Ban Stamp) temporarily bias the weights for a spin, and those effects still stack on top of your settings.
 The Joker is not adjustable: its chance comes from cores and the game caps it at 5%.
+
+### Items tab
+
+The left side lists the run's inventory (`Owned`) and the item shop's current offers (`Shop offers`).
+The right side is the catalog of every item, filterable by type. Hover anything to see its effect in the game's language.
+
+1. Click a slot on the left: an owned item, the empty slot, or a shop offer.
+2. Click an item in the catalog to put it there.
+   - **Owned slot:** the item replaces what was there (or fills the empty slot) at level 1. Adjust the level with `-` / `+`, remove it with `x`.
+   - **Shop offer:** the shop now offers that item; buy it as usual, with essence.
+
+| Key | Action |
+|---|---|
+| `↑` / `↓` | Select a slot |
+| `←` / `→` | Level −/+ of the selected owned item |
+| `Delete` / `Backspace` | Remove the selected owned item (no refund) |
+
+In the catalog, a gold corner marks items you own and a green dot marks items in the shop.
+Each item can be owned once, and the inventory size is the game's own (6 by default, more with upgrades).
+Items can't be edited on the main menu or during a battle; changes apply from the next battle.
+Some items are normally offered only on one stage ("stage N item"); you can place them anywhere, but their effect may assume that stage.
+
+Edited items stay in the run's save. Continuing such a run after a restart blocks leaderboard submissions for that session too.
 
 ## Configuration
 
@@ -107,12 +142,14 @@ Slotbound is a LÖVE 11.5 / LuaJIT game. Its code ships encrypted, and the launc
 
    | Hook | Used for |
    |---|---|
-   | `love.graphics.present` | Per-frame update and overlay drawing |
+   | `love.graphics.present` | Per-frame update and panel drawing |
    | `love.handlers` | Input |
    | `require` | Patching game modules as they load |
 
 4. **Symbol Odds** rewrites `src.data.constants`' `slot.symbolWeights`, which the game reads on every roll.
    It also updates the base weights that cores restore after their one-spin effects.
+5. **Items** edits the run's inventory (`ui._itemPurchased`) and shop offers (`ui._itemOffers`).
+   New inventory entries are built with the game's own `restorePurchasedItems`, the function that loads a saved run.
 
 When launched from Steam, `launch.sh` takes two extra steps:
 
@@ -131,7 +168,7 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
      local cfg = T.config.load("<name>", { enabled = true }) -- config/<name>.lua
      local F = {}
      function F.update(dt) end
-     function F.draw() end                          -- after the game has drawn
+     function F.draw() end                          -- after the game has drawn (and the panel)
      function F.keypressed(key) return false end    -- return true to swallow
      function F.mousepressed(x, y, button) return false end
      function F.mousereleased(x, y, button) return false end
@@ -142,6 +179,18 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
 
 2. Add `"<name>"` to `FEATURES` at the top of `loader.lua`.
 3. If the feature changes gameplay, call `T.taint("<reason>")` while it's active.
+4. For settings UI, add a tab to the `F8` panel instead of handling a hotkey yourself:
+
+   ```lua
+   T.panel.addTab({
+     id = "<name>", title = "My Feature",
+     draw = function(x, y, w, h, s) end,       -- content rect in pixels, s = UI scale
+     keypressed = function(key) end,           -- only while this tab is showing
+     mousepressed = function(x, y, button) end -- only for clicks inside the content rect
+   })
+   ```
+
+   `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button.
 
 Other helpers:
 
@@ -169,7 +218,7 @@ Logs are in `logs/`:
 - `SB_SELFTEST=1 ./launch.sh` (Windows: `set SB_SELFTEST=1` then `launch.bat`) runs a self-test:
   - samples the game's real symbol picker 200,000 times and logs the distribution;
   - opens the panel through a synthetic `F8` key event;
-  - saves `logs/selftest.png`.
+  - saves a screenshot of each tab as `logs/selftest-<tab>.png`.
 - Game updates can change internals. The code was written against Slotbound 1.0.3.
 
 ## License
