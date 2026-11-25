@@ -20,13 +20,14 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 |---|---|---|
 | **Symbol Odds** | `F8` → Symbol Odds | Edit the slot machine's symbol weights (Warrior, Archer, Spear, Mage, Horse, Duelist). Takes effect immediately and is saved between sessions. |
 | **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an inventory slot, change its level, remove it, or choose what the item shop offers. |
+| **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
 More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards
 
-Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol odds or an edited item), leaderboard submissions are **blocked until the game is restarted**.
+Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol odds, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
 To submit scores again, reset the tweaks to defaults (or turn them off) and restart the game.
 Steam achievements are not affected.
 
@@ -120,6 +121,16 @@ Some items are normally offered only on one stage ("stage N item"); you can plac
 
 Edited items stay in the run's save. Continuing such a run after a restart blocks leaderboard submissions for that session too.
 
+### Cores tab
+
+Works like the Items tab. The left side lists the run's active cores and, while the game is offering cores, the three cards of the core selection screen. The catalog can be filtered by rarity.
+
+- **Active core slot:** the core replaces the one there (or fills the empty slot). New cores count as picked on the current wave, and appear at the end of the list. Remove one with `x` or `Delete`.
+- **Core selection card:** the card now offers that core; pick it on the selection screen as usual.
+
+Each core can be active once. Cores can't be edited on the main menu, during a battle, or while the slot machine is spinning.
+Cores you add or offer are remembered in `config/cores.lua` while they are in the run, so continuing such a run after a restart also blocks leaderboard submissions.
+
 ## Configuration
 
 Each feature keeps its settings in `config/<feature>.lua`, which is created on first run. You can edit these files in-game or by hand.
@@ -150,6 +161,7 @@ Slotbound is a LÖVE 11.5 / LuaJIT game. Its code ships encrypted, and the launc
    It also updates the base weights that cores restore after their one-spin effects.
 5. **Items** edits the run's inventory (`ui._itemPurchased`) and shop offers (`ui._itemOffers`).
    New inventory entries are built with the game's own `restorePurchasedItems`, the function that loads a saved run.
+6. **Cores** adds and removes cores through the game's own `src.game.cores` `select` / `remove`, and edits the selection screen's offers (`ui._coreSelect.offers`).
 
 When launched from Steam, `launch.sh` takes two extra steps:
 
@@ -191,6 +203,7 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
    ```
 
    `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button.
+   For a "slots + catalog" tab like Items or Cores, use `T.picker.tab(spec)` (see the comment at the top of `picker.lua`).
 
 Other helpers:
 

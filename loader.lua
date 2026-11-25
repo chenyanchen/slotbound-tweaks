@@ -12,9 +12,10 @@
 --   mousereleased(x, y, button)      return true to swallow the event
 --   onRequire(name, module)          a game module was required
 -- A feature that throws is disabled (logged), the game keeps running.
--- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel).
+-- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel);
+-- picker.lua (T.picker) builds the slot + catalog tabs (Items, Cores).
 
-local FEATURES = { "symbol_odds", "items", "spin_log" }
+local FEATURES = { "symbol_odds", "items", "cores", "spin_log" }
 
 local SRC = debug.getinfo(1, "S").source:gsub("^@", "")
 local ROOT = SRC:match("^(.*)/[^/]*$") or "."
@@ -239,6 +240,8 @@ do
     -- keep T.panel usable so features can still register tabs
     T.panel = { addTab = function() end, isShowing = function() return false end }
   end
+  local okP, errP = pcall(function() return T.loadLua("picker.lua")(T) end)
+  if not okP then log("picker failed to load: %s", tostring(errP)) end
 end
 
 for _, name in ipairs(FEATURES) do

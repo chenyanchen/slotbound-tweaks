@@ -39,7 +39,7 @@ On Windows, stages 1-2 are replaced by:
 - **`launch.bat` → `launch.ps1`** — the `.bat` forces 64-bit PowerShell via `Sysnative` (Steam is 32-bit, so its child cmd.exe is too; a 32-bit debugger cannot debug the 64-bit game). `launch.ps1` finds the game through Steam's `libraryfolders.vdf`, compiles `inject.cs` with `Add-Type`, then waits on the game pid.
 - **`inject.cs`** — C# 5 (the compiler bundled with PowerShell 5.1: no `$""`, no `?.`, no `=>` members). Starts the game with `DEBUG_ONLY_THIS_PROCESS`, finds the Lua API by parsing PE exports of loaded modules (`lua51.dll` in stock LÖVE), puts an `int3` on `luaL_loadbuffer`, and checks `r9` (chunk name) / `rcx` (`lua_State*`) per the Win64 ABI. On `@main.lua` it redirects the thread to generated x64 code that calls `luaL_loadfile` + `lua_pcall` (+ `lua_tolstring`/`lua_settop` on error) and traps back with `int3`, restores the saved context, and detaches. The loader path is passed with forward slashes (loader.lua derives `ROOT` by splitting on `/`) and as an 8.3 short path if it contains non-ASCII characters.
 
-3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, loads `panel.lua` (the shared `F8` window, `T.panel`, first in dispatch order), then each name in `FEATURES` from `features/<name>.lua`.
+3. **`loader.lua` (game's LuaJIT state, before the game's `main.lua` runs)** — builds the shared table `T` (also `_G.__SLOTBOUND_TWEAKS`), installs hooks, loads `panel.lua` (the shared `F8` window, `T.panel`, first in dispatch order) and `picker.lua` (`T.picker`, the slots + catalog tab used by Items and Cores), then each name in `FEATURES` from `features/<name>.lua`.
 
 ### Constraints inside the game's Lua state
 
@@ -62,7 +62,11 @@ The game has online leaderboards. Any feature that changes gameplay must call `T
 
 ### Items specifics
 
-Owned items are `ui._itemPurchased` (copies of item defs plus `level`) with a parallel key list `ui._itemPurchasedKeys` (`"p<n>"`; `ui._itemPanelNextId` is the *last* id handed out, so the next key is `+1`). Shop offers are `ui._itemOffers` (references to the defs). New entries are built with the global `restorePurchasedItems({{id=, level=}})` (what a run-save load uses) and spliced in. Every created or changed entry carries the `__slotboundTweaks` marker, which survives the run save, so a modified run taints later sessions too; planted shop-offer ids are kept in `config/items.lua` until the shop rerolls them. Editing is refused on the main menu (`phase == "menu"`) and during battles (`phase == "battle"`).
+Owned items are `ui._itemPurchased` (copies of item defs plus `level`; `nil` until the run's first purchase, so treat it as empty and create it on first add) with a parallel key list `ui._itemPurchasedKeys` (`"p<n>"`; `ui._itemPanelNextId` is the *last* id handed out, so the next key is `+1`). Shop offers are `ui._itemOffers` (references to the defs). New entries are built with the global `restorePurchasedItems({{id=, level=}})` (what a run-save load uses) and spliced in. Every created or changed entry carries the `__slotboundTweaks` marker, which survives the run save, so a modified run taints later sessions too; planted shop-offer ids are kept in `config/items.lua` until the shop rerolls them. Editing is refused on the main menu (`phase == "menu"`) and during battles (`phase == "battle"`).
+
+### Cores specifics
+
+`src.game.cores`: `getActive()` returns a *copy* of the active list (`{ key, def, stacks, startWave, ... }`), `select(def, wave)` activates a core (appended; it does not reject duplicates, the tab does), `remove(key)` deactivates one, `exportState()` / `importState(s)` snapshot and restore the active list (handy to undo tests). The open selection screen is `ui._coreSelect` (`.active`, `.offers` = core defs); `ui._coreSelectOffersCache.offers` keeps the wave's offers. The run save stores cores as bare ids, so instead of a marker the keys of added or offered cores are kept in `config/cores.lua` and taint the session while active or offered; they are pruned only while a run is going (not on the menu), so continuing a saved run still taints. Editing is refused on the menu, in battle, and while `uiLocked` (spinning).
 
 ### Symbol Odds specifics
 
