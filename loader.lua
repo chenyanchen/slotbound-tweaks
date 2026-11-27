@@ -15,7 +15,8 @@
 -- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel);
 -- weights.lua (T.weights) builds the bar-editor tabs (Symbol Weights, Unit
 -- Grades); picker.lua (T.picker) the slot + catalog tabs (Items, Cores,
--- Imprints).
+-- Imprints). UI text goes through i18n.lua (T.tr, T.gameText, T.font) so the
+-- panel follows the game's language.
 
 local FEATURES = { "symbol_weights", "unit_grades", "items", "cores", "imprints", "spin_log" }
 
@@ -127,12 +128,24 @@ end
 ----------------------------------------------------------------------------
 -- shared helpers
 ----------------------------------------------------------------------------
-local fonts = {}
-function T.font(px)
-  px = math.max(10, math.floor(px + 0.5))
-  local f = fonts[px]
-  if not f then f = love.graphics.newFont(px); fonts[px] = f end
-  return f
+-- languages and fonts (T.lang, T.tr, T.gameText, T.font): i18n.lua
+do
+  local ok, err = pcall(function() return T.loadLua("i18n.lua")(T) end)
+  if not ok then
+    log("i18n failed to load: %s", tostring(err))
+    local fonts = {}
+    T.lang = function() return "en" end
+    T.gameText = function() return nil end
+    T.tr = function(key, ...)
+      if select("#", ...) > 0 then return string.format(key, ...) end
+      return key
+    end
+    T.font = function(px)
+      px = math.max(10, math.floor(px + 0.5))
+      fonts[px] = fonts[px] or love.graphics.newFont(px)
+      return fonts[px]
+    end
+  end
 end
 
 -- The slot machine's unit symbols: the keys of `weights` (default: the game's

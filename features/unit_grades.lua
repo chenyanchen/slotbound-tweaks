@@ -137,7 +137,7 @@ return function(T)
   end
 
   local function gradeLabel(g)
-    return T.picker.enText("grade.label." .. g) or (g:sub(1, 1):upper() .. g:sub(2))
+    return T.gameText("grade.label." .. g) or (g:sub(1, 1):upper() .. g:sub(2))
   end
 
   local function rows()
@@ -149,15 +149,14 @@ return function(T)
   end
 
   local editor = T.weights.tab({
-    id = "unit_grades", title = "Unit Grades",
-    intro = "Odds of each grade when a winning line spawns a unit.",
+    id = "unit_grades", title = function() return T.tr("tab.unit_grades") end,
+    intro = function() return T.tr("unit_grades.intro") end,
     rows = rows,
     cfg = F.cfg,
     defaults = function() return F.defaults end,
     save = save,
     apply = apply,
-    note = "While these differ from the game's odds, the rare/legendary pity is off. "
-      .. "Stone packs, cores and promotions still change grades their own way.",
+    note = function() return T.tr("unit_grades.note") end,
   })
 
   function F.update(dt)

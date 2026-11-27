@@ -37,7 +37,7 @@ return function(T)
     local ui = rawget(_G, "ui")
     local phase = rawget(_G, "phase")
     if type(ui) ~= "table" or phase == nil or phase == "menu" then return nil end
-    if phase == "battle" then return ui, "Items can't be changed during a battle." end
+    if phase == "battle" then return ui, T.tr("lock.battle") end
     return ui
   end
 
@@ -77,15 +77,12 @@ return function(T)
 
   -- "Battle", "Training", ...: the game's own label for an item type
   local function typeLabel(t)
-    return picker.enText("item_type_" .. tostring(t):lower()) or tostring(t)
+    return T.gameText("item_type_" .. tostring(t):lower()) or tostring(t)
   end
 
+  -- built on every draw: the labels follow the game's language
   local function filters()
-    if F.filters then return F.filters end
-    local list = catalog()
-    local out = picker.filtersFrom(list, function(d) return d.type end, typeLabel)
-    if #list > 0 then F.filters = out end
-    return out
+    return picker.filtersFrom(catalog(), function(d) return d.type end, typeLabel)
   end
 
   local function icon(d)
@@ -104,13 +101,13 @@ return function(T)
   --------------------------------------------------------------------------
   local function itemName(d)
     local L = package.loaded["src.data.language"]
-    return picker.langText("item.name." .. d.id)
+    return T.gameText("item.name." .. d.id)
       or (type(L) == "table" and type(L.itemNameMap) == "table" and L.itemNameMap[d.id])
       or tostring(d.key or d.id)
   end
 
   local function itemEffect(d, level)
-    local txt = picker.langText("item.effect." .. d.id .. "." .. level)
+    local txt = T.gameText("item.effect." .. d.id .. "." .. level)
     if not txt and type(d.getEffectDescription) == "function" then
       local ok, r = pcall(d.getEffectDescription, d, level)
       if ok then txt = r end
@@ -197,12 +194,12 @@ return function(T)
     local j = ownedIndex(ui, d.id)
     if j == i then return end
     if j then
-      tab.flash("%s is already in slot %d.", itemName(d), j)
+      tab.flash("%s", T.tr("items.in_slot", itemName(d), j))
       tab.select(1, j)
       return
     end
     if i > #list + 1 then i = #list + 1 end
-    if i > capacity(ui) then tab.flash("All item slots are full."); return end
+    if i > capacity(ui) then tab.flash("%s", T.tr("items.full")); return end
     local keys = ui._itemPurchasedKeys
     if type(keys) ~= "table" then keys = {}; ui._itemPurchasedKeys = keys end
     for k = 1, #list do keys[k] = keys[k] or newKey(ui) end
@@ -248,45 +245,44 @@ return function(T)
   -- panel tab
   --------------------------------------------------------------------------
   tab = picker.tab({
-    id = "items", title = "Items",
+    id = "items", title = function() return T.tr("items") end,
     context = runUI,
-    unavailableText = "Start or continue a run to edit its items.",
+    unavailableText = function() return T.tr("items.unavailable") end,
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.type end,
     name = itemName, effect = itemEffect, icon = icon,
     meta = function(d, level)
-      local m = string.format("%s  %s  Lv %d/%d", picker.rarityName(d.rarity), typeLabel(d.type),
-        level, maxLevel(d))
-      if tonumber(d.stage) then m = m .. string.format("  stage %d item", d.stage) end
+      local m = string.format("%s  %s  %s", picker.rarityName(d.rarity), typeLabel(d.type),
+        T.tr("level", level, maxLevel(d)))
+      if tonumber(d.stage) then m = m .. "  " .. T.tr("items.stage", d.stage) end
       return m
     end,
-    help = "Click a slot, then an item   Up/Down slot   Left/Right level   Del delete   "
-      .. "Changes apply from the next battle",
+    help = function() return T.tr("items.help") end,
     sections = {
       {
-        title = function(ui) return string.format("Item slots  %d/%d", #owned(ui), capacity(ui)) end,
+        title = function(ui) return T.tr("items.slots", #owned(ui), capacity(ui)) end,
         slots = capacity,
         selectable = function(ui) return math.min(#owned(ui) + 1, capacity(ui)) end,
         get = function(ui, i) return owned(ui)[i] end,
         put = putOwned,
         mark = "owned",
-        right = function(_, _, e) return string.format("Lv %d/%d", levelOf(e), maxLevel(e)) end,
-        emptyText = function(ui, i) return i == #owned(ui) + 1 and "(empty)  click an item to add" or "(empty)" end,
+        right = function(_, _, e) return T.tr("level", levelOf(e), maxLevel(e)) end,
+        emptyText = function(ui, i) return i == #owned(ui) + 1 and T.tr("items.empty_add") or T.tr("picker.empty") end,
         level = levelOf, maxLevel = maxLevel, setLevel = setLevel,
         remove = removeOwned,
       },
       {
-        title = function() return "Shop" end,
+        title = function() return T.tr("shop") end,
         slots = function(ui) return type(ui._itemOffers) == "table" and #ui._itemOffers or 0 end,
         get = function(ui, j) return ui._itemOffers[j] end,
         put = putOffer,
         mark = "offer",
-        noneText = "(nothing in the shop right now)",
+        noneText = function() return T.tr("items.shop_none") end,
         right = function(ui, j, d)
           local bought = type(ui._itemShopPurchased) == "table" and ui._itemShopPurchased or {}
           local sold = bought[j] or bought[tostring(j)]
-          return d.price and string.format("%s%d", sold and "sold  " or "", d.price) or nil
+          return d.price and string.format("%s%d", sold and (T.tr("items.sold") .. "  ") or "", d.price) or nil
         end,
         dim = function(ui, j)
           local bought = type(ui._itemShopPurchased) == "table" and ui._itemShopPurchased or {}

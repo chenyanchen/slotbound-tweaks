@@ -85,6 +85,16 @@ Same steps, with `launch.bat` instead of `launch.sh`:
 While the panel is open it takes all keyboard input; clicks outside it still reach the game.
 The panel remembers the last tab you used.
 
+### Language
+
+The panel follows the language chosen in the game's settings, and switches as soon as you change it there.
+
+- Everything that comes from the game is shown in the game's language, using the game's own text: names and effects of units, items, cores and imprints, grade names, item types, and words like Items, Cores, Units and Shop.
+- The panel's own text (help lines, messages) is translated into English, Simplified Chinese, Japanese and Korean (`lang/<code>.lua`). Other languages show it in English.
+- For Chinese, Japanese and Korean the panel uses the game's own pixel font. Characters a font lacks are taken from another font, falling back to a system font (Arial) for scripts the game's TrueType fonts don't cover, such as Cyrillic.
+
+To add a language, copy `lang/en.lua` to `lang/<code>.lua` (the game's language code, e.g. `de`, `ru`, `zh-Hant`) and translate the values; missing keys fall back to English.
+
 ### Symbol Weights tab
 
 | Key | Action |
@@ -247,7 +257,8 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
 Other helpers:
 
 - `T.log(fmt, ...)` writes to the log.
-- `T.font(px)` returns a cached font.
+- `T.tr(key, ...)` returns the panel's own text in the game's language (add the key to `lang/en.lua` and the other `lang/*.lua`); `T.gameText(key)` returns a string from the game's own language tables. Never hardcode visible text.
+- `T.font(px)` returns a cached font that can draw the current language.
 - `T.config.save(name, tbl)` saves a config file.
 - `T.loadLua(relpath)` loads a Lua file. Use it instead of `loadfile`, which the game's bootstrap restricts to its own package.
 

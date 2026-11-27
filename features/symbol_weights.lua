@@ -129,21 +129,21 @@ return function(T)
     return nil
   end
 
-  -- "W Warrior": the symbol plus the game's name for its unit
+  -- "W Warrior": the symbol plus the game's name for its unit (in the
+  -- game's current language, so rebuilt on every draw)
   local function rows()
-    if F.rows or not F.keys then return F.rows or {} end
+    if not F.keys then return {} end
     local out = {}
     for _, k in ipairs(F.keys) do
-      local name = T.picker.enText("merc_contract_unit_" .. k)
+      local name = T.gameText("merc_contract_unit_" .. k)
       out[#out + 1] = { key = k, label = name and (k .. " " .. name) or k, icon = function() return icon(k) end }
     end
-    F.rows = out
     return out
   end
 
   local editor = T.weights.tab({
-    id = "symbol_weights", title = "Symbol Weights",
-    intro = "Weights the slot machine uses for each symbol.",
+    id = "symbol_weights", title = function() return T.tr("tab.symbol_weights") end,
+    intro = function() return T.tr("symbol_weights.intro") end,
     rows = rows,
     cfg = F.cfg,
     defaults = function() return F.defaults end,
