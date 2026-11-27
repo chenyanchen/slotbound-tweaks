@@ -13,6 +13,7 @@
 --   catalog()                     -> list of defs ({ id, rarity, ... })
 --   filters() -> { { key, label } }, filterOf(def) -> key ("all" shows everything)
 --   name(def), effect(def, level), icon(def) -> Image|nil
+--   color(def)                    -> {r, g, b} (optional; default: rarity color)
 --   meta(def, level)              -> one line under the name
 --   help                          -> hint line at the bottom
 --   sections = { {
@@ -132,14 +133,14 @@ return function(T)
     return out .. "..."
   end
 
-  local function setRarityColor(d, a)
-    local c = picker.rarityColor(d and d.rarity)
-    love.graphics.setColor(c[1], c[2], c[3], a or 1)
-  end
-
   function picker.tab(spec)
     local F = { sel = { 1, 1 }, filter = "all", hit = {} } -- sel = { section, row }
     local tab = { id = spec.id, title = spec.title }
+
+    local function setRarityColor(d, a)
+      local c = spec.color and d and spec.color(d) or picker.rarityColor(d and d.rarity)
+      love.graphics.setColor(c[1], c[2], c[3], a or 1)
+    end
 
     function tab.flash(fmt, ...)
       F.msg = string.format(fmt, ...)
@@ -283,11 +284,20 @@ return function(T)
       local cx = x + leftW + 26 * s
       local cw = x + w - cx
       local fx = cx
-      for _, f in ipairs(spec.filters and spec.filters() or {}) do
-        local ff = T.font(16 * s)
-        local fw = ff:getWidth(f[2]) + 26 * s
+      local filterList = spec.filters and spec.filters() or {}
+      -- shrink the filter buttons until they fit in one row
+      local fpx, pad, gap = 16, 26, 6
+      local function rowWidth()
+        local ff, total = T.font(fpx * s), 0
+        for _, f in ipairs(filterList) do total = total + ff:getWidth(f[2]) + (pad + gap) * s end
+        return total
+      end
+      while rowWidth() > cw and fpx > 11 do fpx, pad, gap = fpx - 1, math.max(12, pad - 3), math.max(3, gap - 1) end
+      for _, f in ipairs(filterList) do
+        local ff = T.font(fpx * s)
+        local fw = ff:getWidth(f[2]) + pad * s
         F.hit.filters[f[1]] = T.panel.button({ fx, y - 2 * s, fw, 28 * s }, f[2], ff, F.filter == f[1])
-        fx = fx + fw + 6 * s
+        fx = fx + fw + gap * s
       end
 
       local items = {}
