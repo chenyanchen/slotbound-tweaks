@@ -165,6 +165,8 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
 
 ## Adding a feature
 
+To find the game data and functions a feature needs, see [Investigating the game](docs/investigating.md).
+
 1. Create `features/<name>.lua`:
 
    ```lua
@@ -225,6 +227,7 @@ Logs are in `logs/`:
   - samples the game's real symbol picker 200,000 times and logs the distribution;
   - opens the panel through a synthetic `F8` key event;
   - saves a screenshot of each tab as `logs/selftest-<tab>.png`.
+- `SB_PROBE=1 ./launch.sh` (Windows: `set SB_PROBE=1`) starts a file-based REPL in the game for development: write Lua to `logs/probe-in.lua`, read `logs/probe-out.txt`. See [Investigating the game](docs/investigating.md).
 - Game updates can change internals. The code was written against Slotbound 1.0.3.
 
 ## License

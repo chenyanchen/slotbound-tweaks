@@ -5,6 +5,7 @@
 # Env:
 #   SB_DRYRUN=1   check the environment (lldb, python3) without starting the game
 #   SB_SELFTEST=1 run tools/selftest.lua after startup
+#   SB_PROBE=1    run tools/probe.lua: a file-based REPL in the game (docs/investigating.md)
 set -uo pipefail
 
 # Steam injects its overlay via DYLD_INSERT_LIBRARIES (arm64/x86_64 only);
