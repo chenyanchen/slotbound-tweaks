@@ -275,12 +275,22 @@ return function(T)
     return picker.plainText(T.gameText("imprint.desc." .. id .. "_" .. (level or 1)) or (L and L.desc) or "")
   end
 
+  -- A promoted unit's class name via the game's translateUnitName(key, lang)
+  -- (it normalizes keys such as "엘프병사" through unit.display.* first;
+  -- unknown keys come back as "unit.name.<key>" or "Unknown"). A unit
+  -- without a class (normal grade) is named after its symbol, as the game
+  -- does: merc_contract_unit_<sym>.
   local function unitName(u)
     local L = package.loaded["src.data.language"]
-    local key = u.subclassKey or u.subclass
-    return (key and T.gameText("unit.name." .. key))
-      or (key and type(L) == "table" and type(L.unitNameMap) == "table" and L.unitNameMap[key])
-      or u.subclassName or tostring(u.sym or "?")
+    local key = u.subclassKey or u.subclassName or u.subclass
+    if key and type(L) == "table" and type(L.translateUnitName) == "function" then
+      local ok, n = pcall(L.translateUnitName, key, T.lang())
+      if ok and type(n) == "string" and n ~= "" and n ~= "Unknown" and not n:find("^unit%.name%.") then
+        return n
+      end
+    end
+    return (u.sym and T.gameText("merc_contract_unit_" .. tostring(u.sym)))
+      or (key and tostring(key)) or tostring(u.sym or "?")
   end
 
   local function signatureOf(u)
