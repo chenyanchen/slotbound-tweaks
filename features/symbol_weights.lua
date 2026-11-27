@@ -143,7 +143,6 @@ return function(T)
 
   local editor = T.weights.tab({
     id = "symbol_weights", title = function() return T.tr("tab.symbol_weights") end,
-    intro = function() return T.tr("symbol_weights.intro") end,
     rows = rows,
     cfg = F.cfg,
     defaults = function() return F.defaults end,

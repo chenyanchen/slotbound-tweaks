@@ -400,7 +400,6 @@ return function(T)
   tab = picker.tab({
     id = "imprints", title = function() return T.tr("tab.imprints") end,
     context = runCtx,
-    unavailableText = function() return T.tr("imprints.unavailable") end,
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.rarity end,
@@ -418,7 +417,6 @@ return function(T)
           if e then F.unit = e.unit; putImprint(e.unit, #imprintsOf(e.unit) + 1, c) end
         end,
         right = function(_, _, e) return string.format("%d/%d", #imprintsOf(e.unit), slotsOf(e.unit)) end,
-        noneText = function() return T.tr("imprints.no_units") end,
       },
       {
         title = function(ctx)
@@ -435,9 +433,8 @@ return function(T)
         right = function(_, _, e) return T.tr("level", levelOf(e), maxLevelOf(e)) end,
         emptyText = function(ctx, i)
           if i > slotsOf(ctx.unit) then return T.tr("imprints.locked") end
-          return i == #imprintsOf(ctx.unit) + 1 and T.tr("imprints.empty_add") or T.tr("picker.empty")
+          return nil -- (empty)
         end,
-        noneText = function() return T.tr("imprints.select_unit") end,
         level = levelOf, maxLevel = maxLevelOf, setLevel = setLevel,
         remove = removeImprint,
       },

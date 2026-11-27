@@ -6,8 +6,8 @@
 return {
   -- panel
   ["panel.hint"] = "Tab switch   F8/Esc close",
-  ["panel.tainted"] = "Session modified: leaderboard submissions disabled until the game restarts.",
-  ["panel.clean"] = "Nothing changed yet: leaderboard submissions unaffected.",
+  ["panel.tainted"] = "Modified: leaderboard submissions off until the game restarts.",
+  ["panel.clean"] = "Unmodified: leaderboard submissions on.",
 
   -- shared
   ["items"] = "Items",
@@ -22,15 +22,14 @@ return {
 
   -- bar editor (Symbol Weights, Unit Grades)
   ["weights.loading"] = "Waiting for the game to load...",
-  ["weights.help1"] = "Up/Down select   Left/Right +-0.01 (Shift +-0.05, hold = fast)   O only   0 zero",
-  ["weights.help2"] = "R reset to defaults   E toggle   (white tick = game default)",
+  ["weights.help"] = "O only   0 zero   R reset   E on/off   White tick: game default",
 
   -- slots + catalog (Items, Cores, Imprints)
-  ["picker.browse"] = "You can still browse the catalog.",
+  ["picker.no_run"] = "Start or continue a run to edit.",
   ["picker.empty"] = "(empty)",
   ["picker.none"] = "(none)",
   ["picker.all"] = "All",
-  ["picker.hint"] = "Select a slot on the left, then click an entry to put it there.\nGold corner = owned, green dot = offered.",
+  ["picker.hint"] = "Gold corner: owned   Green dot: offered",
   ["rarity.C"] = "Common",
   ["rarity.U"] = "Uncommon",
   ["rarity.R"] = "Rare",
@@ -41,32 +40,22 @@ return {
 
   -- Symbol Weights
   ["tab.symbol_weights"] = "Symbol Weights",
-  ["symbol_weights.intro"] = "Weights the slot machine uses for each symbol.",
 
   -- Unit Grades
   ["tab.unit_grades"] = "Unit Grades",
-  ["unit_grades.intro"] = "Odds of each grade when a winning line spawns a unit.",
-  ["unit_grades.note"] = "While these differ from the game's odds, the rare/legendary pity is off. "
-    .. "Stone packs, cores and promotions still change grades their own way.",
+  ["unit_grades.note"] = "Pity is off while these differ from the game's odds.",
 
   -- Items
-  ["items.unavailable"] = "Start or continue a run to edit its items.",
-  ["items.help"] = "Click a slot, then an item   Up/Down slot   Left/Right level   Del delete   "
-    .. "Changes apply from the next battle",
+  ["items.help"] = "Click a slot, then an item   Del delete",
   ["items.slots"] = "Item slots  %d/%d",
-  ["items.empty_add"] = "(empty)  click an item to add",
   ["items.in_slot"] = "%s is already in slot %d.",
   ["items.full"] = "All item slots are full.",
   ["items.stage"] = "stage %d item",
-  ["items.shop_none"] = "(nothing in the shop right now)",
   ["items.sold"] = "sold",
 
   -- Cores
-  ["cores.unavailable"] = "Start or continue a run to edit its cores.",
-  ["cores.help"] = "Click a slot, then a core   Up/Down slot   Del remove   New cores count from the current wave",
-  ["cores.empty_add"] = "(empty)  click a core to add",
+  ["cores.help"] = "Click a slot, then a core   Del remove",
   ["cores.selection"] = "Core selection",
-  ["cores.selection_none"] = "(shown while the game offers cores)",
   ["cores.manual"] = "manual use",
   ["cores.consumable"] = "consumable",
   ["cores.active_slot"] = "%s is already active (slot %d).",
@@ -78,13 +67,9 @@ return {
 
   -- Imprints
   ["tab.imprints"] = "Imprints",
-  ["imprints.unavailable"] = "Start or continue a run to edit its units' imprints.",
-  ["imprints.help"] = "Click a unit, then an imprint slot, then an imprint   Left/Right level   Del remove",
+  ["imprints.help"] = "Click a unit, a slot, then an imprint   Del remove",
   ["imprints.modal"] = "Finish the game's imprint choice first.",
   ["imprints.list"] = "Imprints of unit %d  %d/%d",
-  ["imprints.no_units"] = "(no units on the board)",
-  ["imprints.select_unit"] = "(select a unit)",
-  ["imprints.empty_add"] = "(empty)  click an imprint to add",
   ["imprints.locked"] = "(locked)",
   ["imprints.has"] = "This unit already has %s (slot %d).",
   ["imprints.full"] = "All imprint slots of this unit are full.",

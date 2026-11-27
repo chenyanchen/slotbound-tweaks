@@ -252,7 +252,6 @@ return function(T)
   tab = picker.tab({
     id = "cores", title = function() return T.tr("cores") end,
     context = runCtx,
-    unavailableText = function() return T.tr("cores.unavailable") end,
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.rarity end,
@@ -267,7 +266,6 @@ return function(T)
         get = function(ctx, i) return defOf(ctx.active[i]) end,
         put = putActive,
         mark = "owned",
-        emptyText = function(ctx, i) return i == #ctx.active + 1 and T.tr("cores.empty_add") or T.tr("picker.empty") end,
         remove = removeActive,
       },
       {
@@ -282,7 +280,6 @@ return function(T)
         end,
         put = putOffer,
         mark = "offer",
-        noneText = function() return T.tr("cores.selection_none") end,
       },
     },
   })

@@ -150,7 +150,6 @@ return function(T)
 
   local editor = T.weights.tab({
     id = "unit_grades", title = function() return T.tr("tab.unit_grades") end,
-    intro = function() return T.tr("unit_grades.intro") end,
     rows = rows,
     cfg = F.cfg,
     defaults = function() return F.defaults end,

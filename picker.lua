@@ -9,7 +9,7 @@
 -- spec:
 --   id, title                     panel tab (title: string or function, see panel.lua)
 --   context()                     -> ctx, lockedReason | nil (nothing to edit)
---   unavailableText               shown when context() returns nil
+--   unavailableText               shown when context() returns nil (optional)
 --                                 (this, help and noneText: strings or functions
 --                                 returning one, so they can follow the language)
 --   catalog()                     -> list of defs ({ id, rarity, ... })
@@ -218,7 +218,7 @@ return function(T)
       ---------------- left: sections ----------------
       if not ctx then
         g.setFont(headFont); g.setColor(1, 1, 1, 0.6)
-        g.printf(text(spec.unavailableText) .. "\n" .. T.tr("picker.browse"), x, y + 8 * s, leftW)
+        g.printf(text(spec.unavailableText) or T.tr("picker.no_run"), x, y + 8 * s, leftW)
       else
         clampSel(ctx)
         local rows, headers = 0, 0

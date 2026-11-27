@@ -247,7 +247,6 @@ return function(T)
   tab = picker.tab({
     id = "items", title = function() return T.tr("items") end,
     context = runUI,
-    unavailableText = function() return T.tr("items.unavailable") end,
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.type end,
@@ -268,7 +267,6 @@ return function(T)
         put = putOwned,
         mark = "owned",
         right = function(_, _, e) return T.tr("level", levelOf(e), maxLevel(e)) end,
-        emptyText = function(ui, i) return i == #owned(ui) + 1 and T.tr("items.empty_add") or T.tr("picker.empty") end,
         level = levelOf, maxLevel = maxLevel, setLevel = setLevel,
         remove = removeOwned,
       },
@@ -278,7 +276,6 @@ return function(T)
         get = function(ui, j) return ui._itemOffers[j] end,
         put = putOffer,
         mark = "offer",
-        noneText = function() return T.tr("items.shop_none") end,
         right = function(ui, j, d)
           local bought = type(ui._itemShopPurchased) == "table" and ui._itemShopPurchased or {}
           local sold = bought[j] or bought[tostring(j)]

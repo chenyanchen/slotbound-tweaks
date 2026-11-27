@@ -5,7 +5,7 @@
 --
 -- spec:
 --   id, title                 panel tab (title: string or function, see panel.lua)
---   intro, note               lines of text (strings or functions returning one)
+--   intro, note               optional lines of text (strings or functions returning one)
 --   rows() -> { { key, label, icon = fn() -> Image|nil, color = fn() -> {r,g,b} } }
 --                             read from the game, so it may be empty until the game has loaded
 --   cfg                       { enabled = bool, weights = { [key] = number } }, edited in place
@@ -107,7 +107,7 @@ return function(T)
       local btn = { x + w - 150 * s, y, 150 * s, 34 * s }
       E.hit.toggle = T.panel.button(btn, on and T.tr("on") or T.tr("off"), T.font(18 * s), on)
       g.setFont(T.font(17 * s)); g.setColor(0.8, 0.8, 0.85, 1)
-      g.print(text(spec.intro), x, y + 8 * s)
+      if spec.intro then g.print(text(spec.intro), x, y + 8 * s) end
       if #rows == 0 then
         g.setColor(1, 1, 1, 0.5); g.print(T.tr("weights.loading"), x, y + 60 * s)
         return
@@ -161,11 +161,10 @@ return function(T)
 
       g.setFont(T.font(15 * s)); g.setColor(0.8, 0.8, 0.85, 1)
       local fy = ry + 12 * s
-      g.print(T.tr("weights.help1"), x, fy)
-      g.print(T.tr("weights.help2"), x, fy + 24 * s)
+      g.print(T.tr("weights.help"), x, fy)
       if spec.note then
         g.setColor(0.7, 0.7, 0.78, 1)
-        g.printf(text(spec.note), x, fy + 56 * s, w)
+        g.printf(text(spec.note), x, fy + 32 * s, w)
       end
     end
 
