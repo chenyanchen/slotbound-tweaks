@@ -41,10 +41,10 @@ Most data only exists during a run: start or continue one (and spin a few times)
 | Who reads or writes a field | `findFns("fieldName")`, then `consts(f)` on the hits | `findFns("imprints")` led to `battlefield.dropRoster` (the absorb path) |
 | A private function | walk the upvalues of a public one: `ups(f)`, `debug.getupvalue(f, i)` | the imprint level helper is an upvalue of `dropRoster` |
 | The game's own word for something | `lang("pattern", code)` | `lang("Imprint")` → `imprint_gained_label`, `collection_imprint_slots` |
-| Text keys for content | `lang` on a known name, then follow the key pattern | `imprint.name.<id>`, `imprint.desc.<id>_<level>`, `grade.label.<grade>`, `unit.name.<key>` |
+| Text keys for content | `lang` on a known name, then follow the key pattern; prefer the game's own lookup function when there is one (`findFns("unit.name.")`) | `imprint.name.<id>`, `imprint.desc.<id>_<level>`, `grade.label.<grade>`; unit names need `translateUnitName(key, lang)`, since keys are normalized through `unit.display.*` first |
 | Icons and fonts | the paths in the data (`def.icon`), `love.filesystem.getDirectoryItems` | `love.graphics.newImage(def.icon)`; fonts under the directory of `ui.fontPath` |
 
-Use the game's text only where it fits the context, and check it in every language: the game's Korean `imprint_gained_label` means "acquired imprint", and its Chinese "Off" (`关闭`) reads as "Close" on a button.
+Check names in every language, with real data: a lookup that works for one key can miss another (unit keys like `엘프병사` showed up in Korean until the game's normalizing function was used), and some game functions ignore `currentGameLang` unless the language is passed. Use the game's text only where it fits the context: the game's Korean `imprint_gained_label` means "acquired imprint", and its Chinese "Off" (`关闭`) reads as "Close" on a button.
 
 ## Locating a private function robustly
 
