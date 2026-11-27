@@ -22,15 +22,16 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 | **Unit Grades** | `F8` → Unit Grades | Edit the odds of each unit grade (Normal, Advanced, Rare, Legendary, Prism) for units spawned by winning lines. For example, always Prism. |
 | **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an item slot, change its level, delete it, or choose what the shop sells. |
 | **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
+| **Imprints** | `F8` → Imprints | Change the imprints of the units on the board: add any imprint, replace or remove one, or change its level. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
-Symbols, unit grades, items and cores, with their names, effects and icons, are all read from the game itself, so new content from a game update shows up without changing the tweaks.
+Symbols, unit grades, items, cores and imprints, with their names, effects and icons, are all read from the game itself, so new content from a game update shows up without changing the tweaks.
 
 More features are planned; see [Adding a feature](#adding-a-feature).
 
 ### Fair play: leaderboards
 
-Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol weights or unit grade odds, or an edited item or core), leaderboard submissions are **blocked until the game is restarted**.
+Slotbound has online leaderboards. Once any tweak changes gameplay during a session (for example, non-default symbol weights or unit grade odds, or an edited item, core or imprint), leaderboard submissions are **blocked until the game is restarted**.
 To submit scores again, reset the tweaks to defaults (or turn them off) and restart the game.
 Steam achievements are not affected.
 
@@ -143,6 +144,30 @@ Works like the Items tab. The left side lists the run's cores (`Cores`) and, whi
 Each core can be active once. Cores can't be edited on the main menu, during a battle, or while the slot machine is spinning.
 Cores you add or offer are remembered in `config/cores.lua` while they are in the run, so continuing such a run after a restart also blocks leaderboard submissions.
 
+### Imprints tab
+
+Every unit the slot machine summons passes on an imprint when another unit absorbs it (it has no effect on the unit itself until then), and a unit can hold as many imprints as its grade allows (Normal 1, Advanced 2, Rare 3, Legendary 4, Prism 5).
+This tab edits the imprints units already hold.
+
+The left side lists the units on the board (`Units`, with how many imprint slots they use) and the imprints of the selected unit.
+The right side is the catalog of every imprint, filterable by grade (the grade of the units that pass it on). Hover anything to see its effect in the game's language; hovering a unit also shows which imprint it passes on when absorbed.
+
+1. Click a unit.
+2. Click one of its imprint slots, then an imprint in the catalog to put it there.
+   A replaced imprint keeps its level; a new one starts at level 1. Adjust the level with `-` / `+`, remove it with `x`.
+   Clicking an imprint while the unit row itself is selected adds it to the unit's first empty slot.
+
+| Key | Action |
+|---|---|
+| `↑` / `↓` | Select a unit or imprint slot |
+| `←` / `→` | Level −/+ of the selected imprint |
+| `Delete` / `Backspace` | Remove the selected imprint |
+
+A gold corner in the catalog marks the selected unit's imprints. Each imprint can be held once per unit, as in the game, where absorbing a second copy levels it up instead.
+The number of slots is the unit's own; the list always shows the most any unit can have (5), with the ones beyond the selected unit's grade marked `(locked)`. Imprints can't be edited on the main menu, during a battle, while the slot machine is spinning, or while the game's own imprint choice is open.
+
+Edited imprints stay in the run's save. Continuing such a run after a restart blocks leaderboard submissions for that session too.
+
 ## Configuration
 
 Each feature keeps its settings in `config/<feature>.lua`, which is created on first run. You can edit these files in-game or by hand.
@@ -175,6 +200,7 @@ Slotbound is a LÖVE 11.5 / LuaJIT game. Its code ships encrypted, and the launc
    New inventory entries are built with the game's own `restorePurchasedItems`, the function that loads a saved run.
 6. **Unit Grades** rewrites `src.data.constants`' `unitGrades.probabilities`, which the game reads on every unit spawn, and bypasses `src.game.luck`'s grade pity while active.
 7. **Cores** adds and removes cores through the game's own `src.game.cores` `select` / `remove`, and edits the selection screen's offers (`ui._coreSelect.offers`).
+8. **Imprints** edits each board unit's `imprints` list (`battlefield.rosterUnits`), building entries from `src.data.constants`' `imprint.definitions` with the game's own level helper, the one absorbing uses.
 
 When launched from Steam, `launch.sh` takes two extra steps:
 
@@ -216,7 +242,7 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
    ```
 
    `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button.
-   For a bar editor like Symbol Weights or Unit Grades, use `T.weights.tab(spec)` (see `weights.lua`); for a "slots + catalog" tab like Items or Cores, use `T.picker.tab(spec)` (see `picker.lua`).
+   For a bar editor like Symbol Weights or Unit Grades, use `T.weights.tab(spec)` (see `weights.lua`); for a "slots + catalog" tab like Items, Cores or Imprints, use `T.picker.tab(spec)` (see `picker.lua`).
 
 Other helpers:
 

@@ -14,9 +14,10 @@
 -- A feature that throws is disabled (logged), the game keeps running.
 -- Features with UI add a tab to the shared F8 panel (panel.lua, T.panel);
 -- weights.lua (T.weights) builds the bar-editor tabs (Symbol Weights, Unit
--- Grades); picker.lua (T.picker) the slot + catalog tabs (Items, Cores).
+-- Grades); picker.lua (T.picker) the slot + catalog tabs (Items, Cores,
+-- Imprints).
 
-local FEATURES = { "symbol_weights", "unit_grades", "items", "cores", "spin_log" }
+local FEATURES = { "symbol_weights", "unit_grades", "items", "cores", "imprints", "spin_log" }
 
 local SRC = debug.getinfo(1, "S").source:gsub("^@", "")
 local ROOT = SRC:match("^(.*)/[^/]*$") or "."
