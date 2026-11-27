@@ -4,8 +4,8 @@
 --   ed.update(dt)                    -- call from the feature's update (hold-to-repeat, deferred save)
 --
 -- spec:
---   id, title                 panel tab
---   intro                     one line under the tab bar
+--   id, title                 panel tab (title: string or function, see panel.lua)
+--   intro, note               optional lines of text (strings or functions returning one)
 --   rows() -> { { key, label, icon = fn() -> Image|nil, color = fn() -> {r,g,b} } }
 --                             read from the game, so it may be empty until the game has loaded
 --   cfg                       { enabled = bool, weights = { [key] = number } }, edited in place
@@ -22,6 +22,7 @@ return function(T)
   local weights = {}
 
   local function round2(x) return math.floor(x * 100 + 0.5) / 100 end
+  local function text(v) if type(v) == "function" then return v() end return v end
 
   function weights.tab(spec)
     local rows = {}
@@ -104,11 +105,11 @@ return function(T)
       E.hit = {}
 
       local btn = { x + w - 150 * s, y, 150 * s, 34 * s }
-      E.hit.toggle = T.panel.button(btn, on and "ON" or "OFF", T.font(18 * s), on)
+      E.hit.toggle = T.panel.button(btn, on and T.tr("on") or T.tr("off"), T.font(18 * s), on)
       g.setFont(T.font(17 * s)); g.setColor(0.8, 0.8, 0.85, 1)
-      g.print(spec.intro, x, y + 8 * s)
+      if spec.intro then g.print(text(spec.intro), x, y + 8 * s) end
       if #rows == 0 then
-        g.setColor(1, 1, 1, 0.5); g.print("Waiting for the game to load...", x, y + 60 * s)
+        g.setColor(1, 1, 1, 0.5); g.print(T.tr("weights.loading"), x, y + 60 * s)
         return
       end
 
@@ -160,11 +161,10 @@ return function(T)
 
       g.setFont(T.font(15 * s)); g.setColor(0.8, 0.8, 0.85, 1)
       local fy = ry + 12 * s
-      g.print("Up/Down select   Left/Right +-0.01 (Shift +-0.05, hold = fast)   O only   0 zero", x, fy)
-      g.print("R reset to defaults   E toggle   (white tick = game default)", x, fy + 24 * s)
+      g.print(T.tr("weights.help"), x, fy)
       if spec.note then
         g.setColor(0.7, 0.7, 0.78, 1)
-        g.printf(spec.note, x, fy + 56 * s, w)
+        g.printf(text(spec.note), x, fy + 32 * s, w)
       end
     end
 

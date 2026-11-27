@@ -55,7 +55,7 @@ return function(T)
   end
 
   local function gradeLabel(g)
-    return picker.enText("grade.label." .. tostring(g)) or tostring(g or "?")
+    return T.gameText("grade.label." .. tostring(g)) or tostring(g or "?")
   end
 
   local function gradeColor(g)
@@ -210,9 +210,9 @@ return function(T)
       if e.unit == F.unit then ctx.unit, ctx.n = e.unit, i end
     end
     if not ctx.unit and ctx.units[1] then ctx.unit, ctx.n = ctx.units[1].unit, 1; F.unit = ctx.unit end
-    if phase == "battle" then return ctx, "Imprints can't be changed during a battle." end
-    if rawget(_G, "uiLocked") then return ctx, "Wait for the slot machine to stop." end
-    if modalOpen() then return ctx, "Finish the game's imprint choice first." end
+    if phase == "battle" then return ctx, T.tr("lock.battle") end
+    if rawget(_G, "uiLocked") then return ctx, T.tr("lock.spinning") end
+    if modalOpen() then return ctx, T.tr("imprints.modal") end
     return ctx
   end
 
@@ -236,12 +236,9 @@ return function(T)
     return list
   end
 
+  -- built on every draw: the labels follow the game's language
   local function filters()
-    if F.filters then return F.filters end
-    local list = catalog()
-    local out = picker.filtersFrom(list, function(d) return d.rarity end, gradeLabel, gradeRank)
-    if #list > 0 then F.filters = out end
-    return out
+    return picker.filtersFrom(catalog(), function(d) return d.rarity end, gradeLabel, gradeRank)
   end
 
   local icons = {}
@@ -267,7 +264,7 @@ return function(T)
   local function imprintName(id)
     local L = package.loaded["src.data.language"]
     local d = definition(id)
-    return picker.langText("imprint.name." .. id)
+    return T.gameText("imprint.name." .. id)
       or (type(L) == "table" and type(L.imprintNameMap) == "table" and L.imprintNameMap[id])
       or (d and d.name) or tostring(id)
   end
@@ -275,13 +272,13 @@ return function(T)
   local function imprintDesc(id, level)
     local d = definition(id)
     local L = d and d.levels[math.max(1, math.min(#d.levels, level or 1))]
-    return picker.plainText(picker.langText("imprint.desc." .. id .. "_" .. (level or 1)) or (L and L.desc) or "")
+    return picker.plainText(T.gameText("imprint.desc." .. id .. "_" .. (level or 1)) or (L and L.desc) or "")
   end
 
   local function unitName(u)
     local L = package.loaded["src.data.language"]
     local key = u.subclassKey or u.subclass
-    return (key and picker.langText("unit.name." .. key))
+    return (key and T.gameText("unit.name." .. key))
       or (key and type(L) == "table" and type(L.unitNameMap) == "table" and L.unitNameMap[key])
       or u.subclassName or tostring(u.sym or "?")
   end
@@ -326,12 +323,12 @@ return function(T)
     if old and old.id == c.id then return end
     local j = indexOf(u, c.id)
     if j then
-      tab.flash("This unit already has %s (slot %d).", imprintName(c.id), j)
+      tab.flash("%s", T.tr("imprints.has", imprintName(c.id), j))
       tab.select(2, j)
       return
     end
     if not old then
-      if #list >= slotsOf(u) then tab.flash("All imprint slots of this unit are full."); return end
+      if #list >= slotsOf(u) then tab.flash("%s", T.tr("imprints.full")); return end
       i = #list + 1
     end
     list[i] = newInst(c.def, old and math.min(levelOf(old), #c.def.levels) or 1)
@@ -379,11 +376,11 @@ return function(T)
     if d.unit then
       local u, parts = d.unit, {}
       for _, inst in ipairs(imprintsOf(u)) do
-        parts[#parts + 1] = string.format("%s Lv %d", imprintName(inst.id), levelOf(inst))
+        parts[#parts + 1] = string.format("%s %s", imprintName(inst.id), T.tr("level", levelOf(inst), maxLevelOf(inst)))
       end
-      local txt = #parts > 0 and table.concat(parts, ", ") or "No imprints."
+      local txt = #parts > 0 and table.concat(parts, ", ") or T.tr("imprints.none")
       local sig = signatureOf(u)
-      if sig then txt = txt .. "\nPasses on when absorbed: " .. imprintName(sig) end
+      if sig then txt = txt .. "\n" .. T.tr("imprints.passes", imprintName(sig)) end
       return txt
     end
     return imprintDesc(d.id, level)
@@ -392,29 +389,27 @@ return function(T)
   local function meta(d, level)
     if d.unit then
       local u = d.unit
-      return string.format("%s  rank %s  imprints %d/%d", gradeLabel(u.grade), tostring(u.rank or 1),
-        #imprintsOf(u), slotsOf(u))
+      return T.tr("imprints.unit_meta", gradeLabel(u.grade), tostring(u.rank or 1), #imprintsOf(u), slotsOf(u))
     end
-    local m = string.format("%s  Lv %d/%d", gradeLabel(d.rarity), level, maxLevelOf(d))
-    local short = picker.langText("imprint.short." .. d.id)
+    local m = string.format("%s  %s", gradeLabel(d.rarity), T.tr("level", level, maxLevelOf(d)))
+    local short = T.gameText("imprint.short." .. d.id)
     if short then m = m .. "   " .. picker.plainText(short) end
     return m
   end
 
   tab = picker.tab({
-    id = "imprints", title = "Imprints",
+    id = "imprints", title = function() return T.tr("tab.imprints") end,
     context = runCtx,
-    unavailableText = "Start or continue a run to edit its units' imprints.",
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.rarity end,
     name = name, effect = effect, meta = meta,
     icon = function(d) return d.unit and unitIcon(d.unit) or imprintIcon(d.id) end,
     color = function(d) return gradeColor(d.unit and d.unit.grade or d.rarity) end,
-    help = "Click a unit, then an imprint slot, then an imprint   Left/Right level   Del remove",
+    help = function() return T.tr("imprints.help") end,
     sections = {
       {
-        title = function(ctx) return string.format("Units  %d", #ctx.units) end,
+        title = function(ctx) return string.format("%s  %d", T.tr("units"), #ctx.units) end,
         slots = function(ctx) return #ctx.units end,
         get = function(ctx, i) return ctx.units[i] and unitEntry(ctx.units[i].unit) or nil end,
         put = function(ctx, i, c)
@@ -422,12 +417,11 @@ return function(T)
           if e then F.unit = e.unit; putImprint(e.unit, #imprintsOf(e.unit) + 1, c) end
         end,
         right = function(_, _, e) return string.format("%d/%d", #imprintsOf(e.unit), slotsOf(e.unit)) end,
-        noneText = "(no units on the board)",
       },
       {
         title = function(ctx)
-          if not ctx.unit then return "Imprints" end
-          return string.format("Imprints of unit %d  %d/%d", ctx.n, #imprintsOf(ctx.unit), slotsOf(ctx.unit))
+          if not ctx.unit then return T.tr("tab.imprints") end
+          return T.tr("imprints.list", ctx.n, #imprintsOf(ctx.unit), slotsOf(ctx.unit))
         end,
         slots = function(ctx) return ctx.unit and slotRows(ctx) or 0 end,
         selectable = function(ctx)
@@ -436,12 +430,11 @@ return function(T)
         get = function(ctx, i) return ctx.unit and imprintsOf(ctx.unit)[i] or nil end,
         put = function(ctx, i, c) if ctx.unit then putImprint(ctx.unit, i, c) end end,
         mark = "owned",
-        right = function(_, _, e) return string.format("Lv %d/%d", levelOf(e), maxLevelOf(e)) end,
+        right = function(_, _, e) return T.tr("level", levelOf(e), maxLevelOf(e)) end,
         emptyText = function(ctx, i)
-          if i > slotsOf(ctx.unit) then return "(locked)" end
-          return i == #imprintsOf(ctx.unit) + 1 and "(empty)  click an imprint to add" or "(empty)"
+          if i > slotsOf(ctx.unit) then return T.tr("imprints.locked") end
+          return nil -- (empty)
         end,
-        noneText = "(select a unit)",
         level = levelOf, maxLevel = maxLevelOf, setLevel = setLevel,
         remove = removeImprint,
       },

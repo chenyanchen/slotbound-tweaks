@@ -1,4 +1,4 @@
--- Picker tab: the shared UI behind the Items and Cores tabs.
+-- Picker tab: the shared UI behind the Items, Cores and Imprints tabs.
 --
 -- Left: sections of slots (e.g. owned items, shop offers). Right: a catalog
 -- grid with filters and a detail box. The player selects a slot, then clicks
@@ -7,9 +7,11 @@
 --   T.picker.tab(spec) -> tab, already added to the F8 panel
 --
 -- spec:
---   id, title                     panel tab
+--   id, title                     panel tab (title: string or function, see panel.lua)
 --   context()                     -> ctx, lockedReason | nil (nothing to edit)
---   unavailableText               shown when context() returns nil
+--   unavailableText               shown when context() returns nil (optional)
+--                                 (this, help and noneText: strings or functions
+--                                 returning one, so they can follow the language)
 --   catalog()                     -> list of defs ({ id, rarity, ... })
 --   filters() -> { { key, label } }, filterOf(def) -> key ("all" shows everything)
 --   name(def), effect(def, level), icon(def) -> Image|nil
@@ -39,44 +41,32 @@ return function(T)
   local RARITY_COLOR = {
     C = { 0.78, 0.78, 0.8 }, U = { 0.45, 0.86, 0.45 }, R = { 0.42, 0.66, 1 }, L = { 1, 0.64, 0.22 },
   }
-  -- The game has no labels for item/core rarities; unknown ones show their code.
-  local RARITY_NAME = { C = "Common", U = "Uncommon", R = "Rare", L = "Legendary" }
   local RARITY_RANK = { C = 1, U = 2, R = 3, L = 4 }
   local inside = T.panel.inside
   local picker = {}
 
-  -- The game's own font for the current language (names may be CJK).
-  local gameFonts = {}
-  function picker.gameFont(px)
-    local ui = rawget(_G, "ui")
-    local path = type(ui) == "table" and type(ui.fontPath) == "string" and ui.fontPath
-    if not path then return T.font(px) end
-    px = px >= 15 and math.floor(px / 10 + 0.5) * 10 or 10 -- pixel font: whole multiples
-    local k = path .. "@" .. px
-    if gameFonts[k] == nil then
-      local ok, f = pcall(love.graphics.newFont, path, px)
-      if ok and f then f:setFilter("nearest", "nearest") end
-      gameFonts[k] = ok and f or false
-    end
-    return gameFonts[k] or T.font(px)
-  end
-  local gameFont = picker.gameFont
+  local function text(v) if type(v) == "function" then return v() end return v end
+
+  -- T.font follows the game's language (see i18n.lua); kept for features
+  local function gameFont(px) return T.font(px) end
+  picker.gameFont = gameFont
 
   -- A string from the game's language tables (current language, then English).
-  function picker.langText(key)
-    local L = package.loaded["src.data.language"]
-    if type(L) ~= "table" then return nil end
-    local cur = L[rawget(_G, "currentGameLang") or "en"]
-    return (type(cur) == "table" and cur[key]) or (type(L.en) == "table" and L.en[key]) or nil
-  end
+  picker.langText = T.gameText
 
-  -- A string from the game's English table (the panel's own text is English).
+  -- A string from the game's English table, whatever the current language.
   function picker.enText(key)
     local L = package.loaded["src.data.language"]
     return type(L) == "table" and type(L.en) == "table" and L.en[key] or nil
   end
 
-  function picker.rarityName(r) return RARITY_NAME[r] or tostring(r) end
+  -- The game has no labels for item/core rarities (lang/*.lua has them);
+  -- unknown ones show their code.
+  function picker.rarityName(r)
+    local key = "rarity." .. tostring(r)
+    local s = T.tr(key)
+    return s ~= key and s or tostring(r)
+  end
 
   -- for sorting: the known rarities in order, then anything else
   function picker.rarityRank(r) return RARITY_RANK[r] or 99 end
@@ -102,7 +92,7 @@ return function(T)
       if ra ~= rb then return ra < rb end
       return tostring(a) < tostring(b)
     end)
-    local out = { { "all", "All" } }
+    local out = { { "all", T.tr("picker.all") } }
     for _, v in ipairs(values) do out[#out + 1] = { v, label(v) } end
     return out
   end
@@ -110,11 +100,14 @@ return function(T)
   -- "{hp.png}" style inline icons -> words; other "{name}" via values[name].
   local ICON_WORDS = {
     hp = "HP", atk = "ATK", aspd = "ASPD", def = "DEF", range = "RANGE",
-    gold = "Gold", essence = "Essence", joker_tooltip = "Joker",
+    gold = "icon.gold", essence = "icon.essence", joker_tooltip = "icon.joker",
   }
   function picker.plainText(txt, values)
     txt = tostring(txt or "")
-    txt = txt:gsub("{([%w_]+)%.png}", function(w) return ICON_WORDS[w] or w end)
+    txt = txt:gsub("{([%w_]+)%.png}", function(w)
+      local word = ICON_WORDS[w]
+      return word and (word:find("^icon%.") and T.tr(word) or word) or w
+    end)
     txt = txt:gsub("{([%w_]+)}", function(w)
       local v = type(values) == "table" and values[w]
       return v ~= nil and tostring(v) or nil
@@ -195,7 +188,7 @@ return function(T)
       if not d then
         local f = T.font(16 * s)
         g.setFont(f); g.setColor(1, 1, 1, 0.35)
-        g.print(opts.emptyText or "(empty)", x + isz + 18 * s, y + (h - 4 * s - f:getHeight()) / 2)
+        g.print(opts.emptyText or T.tr("picker.empty"), x + isz + 18 * s, y + (h - 4 * s - f:getHeight()) / 2)
         return false
       end
       local nameFont = gameFont(20 * s)
@@ -225,7 +218,7 @@ return function(T)
       ---------------- left: sections ----------------
       if not ctx then
         g.setFont(headFont); g.setColor(1, 1, 1, 0.6)
-        g.printf(spec.unavailableText .. "\nYou can still browse the catalog.", x, y + 8 * s, leftW)
+        g.printf(text(spec.unavailableText) or T.tr("picker.no_run"), x, y + 8 * s, leftW)
       else
         clampSel(ctx)
         local rows, headers = 0, 0
@@ -242,7 +235,7 @@ return function(T)
           local n = sec.slots(ctx)
           if n == 0 then
             g.setFont(T.font(16 * s)); g.setColor(1, 1, 1, 0.35)
-            g.print(sec.noneText or "(none)", x, ry + 8 * s)
+            g.print(text(sec.noneText) or T.tr("picker.none"), x, ry + 8 * s)
             ry = ry + rowH
           end
           local nButtons = (sec.setLevel and 2 or 0) + (sec.remove and 1 or 0)
@@ -381,8 +374,7 @@ return function(T)
         end
       else
         g.setFont(T.font(16 * s)); g.setColor(1, 1, 1, 0.5)
-        g.printf("Select a slot on the left, then click an entry to put it there.\n"
-          .. "Gold corner = owned, green dot = offered.", px, dy + 10 * s, pw)
+        g.printf(T.tr("picker.hint"), px, dy + 10 * s, pw)
       end
 
       ---------------- help ----------------
@@ -390,7 +382,7 @@ return function(T)
       if locked then
         g.setColor(1, 0.75, 0.45, 1); g.print(locked, x, helpY)
       else
-        g.setColor(0.8, 0.8, 0.85, 1); g.print(spec.help, x, helpY)
+        g.setColor(0.8, 0.8, 0.85, 1); g.print(text(spec.help), x, helpY)
       end
     end
 

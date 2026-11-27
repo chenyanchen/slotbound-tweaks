@@ -64,8 +64,8 @@ return function(T)
     local phase = rawget(_G, "phase")
     if type(ui) ~= "table" or not C or phase == nil or phase == "menu" then return nil end
     local ctx = { ui = ui, C = C, active = activeList(C) }
-    if phase == "battle" then return ctx, "Cores can't be changed during a battle." end
-    if rawget(_G, "uiLocked") then return ctx, "Wait for the slot machine to stop." end
+    if phase == "battle" then return ctx, T.tr("lock.battle") end
+    if rawget(_G, "uiLocked") then return ctx, T.tr("lock.spinning") end
     return ctx
   end
 
@@ -102,12 +102,9 @@ return function(T)
     return list
   end
 
+  -- built on every draw: the labels follow the game's language
   local function filters()
-    if F.filters then return F.filters end
-    local list = catalog()
-    local out = picker.filtersFrom(list, function(d) return d.rarity end, picker.rarityName, picker.rarityRank)
-    if #list > 0 then F.filters = out end
-    return out
+    return picker.filtersFrom(catalog(), function(d) return d.rarity end, picker.rarityName, picker.rarityRank)
   end
 
   local function icon(d)
@@ -123,7 +120,7 @@ return function(T)
   --------------------------------------------------------------------------
   local function coreName(d)
     local L = package.loaded["src.data.language"]
-    return picker.langText("core.name." .. d.key)
+    return T.gameText("core.name." .. d.key)
       or (type(L) == "table" and type(L.coreNameMap) == "table" and L.coreNameMap[d.key])
       or tostring(d.key)
   end
@@ -135,15 +132,15 @@ return function(T)
       local ok, v = pcall(C.descValues, d.key)
       if ok then values = v end
     end
-    return picker.plainText(picker.langText("core.desc." .. d.key) or d.desc, values)
+    return picker.plainText(T.gameText("core.desc." .. d.key) or d.desc, values)
   end
 
   local function coreMeta(d)
     local parts = { picker.rarityName(d.rarity) }
-    local trigger = picker.langText("core.trigger." .. d.key)
+    local trigger = T.gameText("core.trigger." .. d.key)
     if trigger then parts[#parts + 1] = picker.plainText(trigger) end
-    if d.manualUse then parts[#parts + 1] = "manual use" end
-    if d.consumable then parts[#parts + 1] = "consumable" end
+    if d.manualUse then parts[#parts + 1] = T.tr("cores.manual") end
+    if d.consumable then parts[#parts + 1] = T.tr("cores.consumable") end
     return table.concat(parts, "   ")
   end
 
@@ -201,19 +198,19 @@ return function(T)
     if old and old.key == d.key then return end
     local j = activeIndex(ctx, d.key)
     if j then
-      tab.flash("%s is already active (slot %d).", coreName(d), j)
+      tab.flash("%s", T.tr("cores.active_slot", coreName(d), j))
       tab.select(1, j)
       return
     end
-    if not old and #ctx.active >= capacity(ctx) then tab.flash("All core slots are full."); return end
+    if not old and #ctx.active >= capacity(ctx) then tab.flash("%s", T.tr("cores.full")); return end
     if old then
       local ok, err = pcall(ctx.C.remove, old.key)
-      if not ok then tab.flash("Could not remove %s.", coreName(old.def or old)); T.log("cores: remove failed: %s", tostring(err)); return end
+      if not ok then tab.flash("%s", T.tr("cores.remove_failed", coreName(old.def or old))); T.log("cores: remove failed: %s", tostring(err)); return end
     end
     local ok, err = pcall(ctx.C.select, d, currentWave())
     if not ok then
       T.log("cores: select %s failed: %s", d.key, tostring(err))
-      tab.flash("Could not add %s.", coreName(d))
+      tab.flash("%s", T.tr("cores.add_failed", coreName(d)))
       return
     end
     record(d.key)
@@ -237,9 +234,9 @@ return function(T)
     if defOf(old) and defOf(old).key == d.key then return end
     for k, o in ipairs(cs.offers) do
       local od = defOf(o)
-      if k ~= j and od and od.key == d.key then tab.flash("%s is already offered.", coreName(d)); return end
+      if k ~= j and od and od.key == d.key then tab.flash("%s", T.tr("cores.offered", coreName(d))); return end
     end
-    if activeIndex(ctx, d.key) then tab.flash("%s is already active.", coreName(d)); return end
+    if activeIndex(ctx, d.key) then tab.flash("%s", T.tr("cores.active", coreName(d))); return end
     cs.offers[j] = d
     local cache = ctx.ui._coreSelectOffersCache
     if type(cache) == "table" and type(cache.offers) == "table" then
@@ -253,28 +250,26 @@ return function(T)
   -- panel tab
   --------------------------------------------------------------------------
   tab = picker.tab({
-    id = "cores", title = "Cores",
+    id = "cores", title = function() return T.tr("cores") end,
     context = runCtx,
-    unavailableText = "Start or continue a run to edit its cores.",
     catalog = catalog,
     filters = filters,
     filterOf = function(d) return d.rarity end,
     name = coreName, effect = coreDesc, icon = icon,
     meta = coreMeta,
-    help = "Click a slot, then a core   Up/Down slot   Del remove   New cores count from the current wave",
+    help = function() return T.tr("cores.help") end,
     sections = {
       {
-        title = function(ctx) return string.format("Cores  %d/%d", #ctx.active, capacity(ctx)) end,
+        title = function(ctx) return string.format("%s  %d/%d", T.tr("cores"), #ctx.active, capacity(ctx)) end,
         slots = capacity,
         selectable = function(ctx) return math.min(#ctx.active + 1, capacity(ctx)) end,
         get = function(ctx, i) return defOf(ctx.active[i]) end,
         put = putActive,
         mark = "owned",
-        emptyText = function(ctx, i) return i == #ctx.active + 1 and "(empty)  click a core to add" or "(empty)" end,
         remove = removeActive,
       },
       {
-        title = function() return "Core selection" end,
+        title = function() return T.tr("cores.selection") end,
         slots = function(ctx)
           local cs = selection(ctx.ui)
           return cs and #cs.offers or 0
@@ -285,7 +280,6 @@ return function(T)
         end,
         put = putOffer,
         mark = "offer",
-        noneText = "(shown while the game offers cores)",
       },
     },
   })

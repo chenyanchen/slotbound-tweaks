@@ -4,7 +4,7 @@
 -- dispatch order, so it sees input before any feature. Features add a tab:
 --
 --   T.panel.addTab({
---     id = "<feature name>", title = "Tab title",
+--     id = "<feature name>", title = function() return T.tr("tab.<name>") end, -- or a string
 --     draw(x, y, w, h, s)         content rect in screen pixels, s = UI scale
 --     keypressed(key, scancode, isrepeat)
 --     mousepressed(x, y, button)  only called for clicks inside the content rect
@@ -151,12 +151,13 @@ return function(T)
     local tx, ty, th = x + pad, y + pad, math.floor(36 * s)
     local cur = activeTab()
     for i, t in ipairs(P.tabs) do
-      local tw = tabFont:getWidth(t.title) + 32 * s
-      P.hit["tab" .. i] = P.button({ tx, ty, tw, th }, t.title, tabFont, t == cur)
+      local title = type(t.title) == "function" and t.title() or tostring(t.title)
+      local tw = tabFont:getWidth(title) + 32 * s
+      P.hit["tab" .. i] = P.button({ tx, ty, tw, th }, title, tabFont, t == cur)
       tx = tx + tw + 8 * s
     end
     g.setFont(T.font(14 * s)); g.setColor(C.dim)
-    g.printf("Tab switch   F8/Esc close", x + pad, ty + (th - T.font(14 * s):getHeight()) / 2, w - pad * 2, "right")
+    g.printf(T.tr("panel.hint"), x + pad, ty + (th - T.font(14 * s):getHeight()) / 2, w - pad * 2, "right")
     g.setColor(1, 1, 1, 0.12); g.rectangle("fill", x + pad, ty + th + 8 * s, w - pad * 2, 1)
 
     -- footer: leaderboard status (shared by every tab)
@@ -165,10 +166,10 @@ return function(T)
     g.setFont(footFont)
     if T.tainted then
       g.setColor(C.warn)
-      g.print("Session modified: leaderboard submissions disabled until the game restarts.", x + pad, fy)
+      g.print(T.tr("panel.tainted"), x + pad, fy)
     else
       g.setColor(C.ok)
-      g.print("Nothing changed yet: leaderboard submissions unaffected.", x + pad, fy)
+      g.print(T.tr("panel.clean"), x + pad, fy)
     end
 
     -- content

@@ -18,11 +18,11 @@ All features with settings live in one panel: press `F8` to open it, `Tab` to sw
 
 | Feature | Where | Description |
 |---|---|---|
-| **Symbol Weights** | `F8` → Symbol Weights | Edit the slot machine's symbol weights (Warrior, Archer, Spearman, Mage, Cavalry, Duelist). Takes effect immediately and is saved between sessions. |
-| **Unit Grades** | `F8` → Unit Grades | Edit the odds of each unit grade (Normal, Advanced, Rare, Legendary, Prism) for units spawned by winning lines. For example, always Prism. |
-| **Items** | `F8` → Items | Choose or swap the current run's items: put any item into an item slot, change its level, delete it, or choose what the shop sells. |
-| **Cores** | `F8` → Cores | Choose or swap the current run's cores: add any core, replace or remove one, or choose what the core selection screen offers. |
-| **Imprints** | `F8` → Imprints | Change the imprints of the units on the board: add any imprint, replace or remove one, or change its level. |
+| **Symbol Weights** | `F8` → Symbol Weights | Edit the slot machine's symbol weights. Saved between sessions. |
+| **Unit Grades** | `F8` → Unit Grades | Edit the odds of each unit grade. Saved between sessions. |
+| **Items** | `F8` → Items | Add, swap, level or delete the run's items, or choose what the shop sells. |
+| **Cores** | `F8` → Cores | Add, swap or remove the run's cores, or choose what the core selection offers. |
+| **Imprints** | `F8` → Imprints | Add, swap, level or remove the imprints of the units on the board. |
 | **Spin Log** | none | Optional per-spin diagnostics written to `logs/tweaks.log`. Off by default. |
 
 Symbols, unit grades, items, cores and imprints, with their names, effects and icons, are all read from the game itself, so new content from a game update shows up without changing the tweaks.
@@ -85,88 +85,41 @@ Same steps, with `launch.bat` instead of `launch.sh`:
 While the panel is open it takes all keyboard input; clicks outside it still reach the game.
 The panel remembers the last tab you used.
 
-### Symbol Weights tab
+### Language
+
+The panel follows the language chosen in the game's settings, and switches as soon as you change it there.
+
+- Everything that comes from the game is shown in the game's language, using the game's own text: names and effects of units, items, cores and imprints, grade names, item types, and words like Items, Cores, Units and Shop.
+- The panel's own text (help lines, messages) is translated into English, Simplified Chinese, Japanese and Korean (`lang/<code>.lua`). Other languages show it in English.
+- For Chinese, Japanese and Korean the panel uses the game's own pixel font. Characters a font lacks are taken from another font, falling back to a system font (Arial) for scripts the game's TrueType fonts don't cover, such as Cyrillic.
+
+To add a language, copy `lang/en.lua` to `lang/<code>.lua` (the game's language code, e.g. `de`, `ru`, `zh-Hant`) and translate the values; missing keys fall back to English.
+
+### Symbol Weights and Unit Grades tabs
+
+One bar per symbol or grade, adjusted with `-` / `+`.
+Percentages are weight ÷ total weight; the white tick marks the game's own value.
 
 | Key | Action |
 |---|---|
-| `↑` / `↓` | Select a symbol (hold to repeat) |
-| `←` / `→` | Weight −/+ 0.01, or 0.05 with `Shift`. Hold to repeat; holding for more than 1.5 s speeds up. The `-`/`+` buttons behave the same. |
-| `O` | Only the selected symbol (100%) |
-| `0` | Set the selected weight to 0 |
-| `R` | Reset to the game's defaults |
-| `E` | Toggle the feature on/off (off = game defaults) |
+| `O` | Only the selected entry (100%) |
+| `0` | Set the selected entry to 0 |
+| `R` | Reset to the game's values |
+| `E` | Turn the tab on/off (off = the game's values) |
 
-Percentages are weight ÷ total weight. The white tick on each bar marks the game's default probability.
-The game's default weights are W 0.20, A 0.20, S 0.20, M 0.15, H 0.15, D 0.10.
+While Unit Grades differs from the game's odds, the game's grade pity is switched off, so the percentages shown are what is rolled.
 
-Some cores (Mirage Goblet, Old Crown, Spore Shroom, Ban Stamp) temporarily bias the weights for a spin, and those effects still stack on top of your settings.
-The Joker is not adjustable: its chance comes from cores and the game caps it at 5%.
+### Items, Cores and Imprints tabs
 
-### Unit Grades tab
+The left side lists slots: the run's items and the shop, the run's cores and the core selection, or the units on the board and the selected unit's imprints.
+The right side is the catalog of everything the game has, with filters. Hover anything to see its effect.
 
-Same keys and buttons as the Symbol Weights tab, for the five unit grades. To always get the top grade, select Prism and press `O`.
+Click a slot (for Imprints, first a unit), then an entry in the catalog to put it there.
+Change the level with `-` / `+` and remove with `x` or `Delete`. A gold corner in the catalog marks what you have, a green dot what is offered.
 
-The white ticks show the game's current odds, which include your meta upgrades (without any: Normal 83%, Advanced 15%, Rare 2%, Legendary and Prism 0%).
-While your odds differ from the game's, its rare/legendary pity (better odds after a long run of low-grade units) is switched off, so the percentages shown are exactly what is rolled. Turning the tab off or resetting restores the pity.
-
-Only units spawned by winning lines are affected. Stone packs, cores (such as Joker Grin or Golden Lever) and promotions change grades their own way, as usual.
-
-### Items tab
-
-The left side lists the run's item slots (`Item slots`) and what the shop currently sells (`Shop`).
-The right side is the catalog of every item, filterable by type. Hover anything to see its effect in the game's language.
-
-1. Click a slot on the left: an item slot (filled or the first empty one) or a shop slot.
-2. Click an item in the catalog to put it there.
-   - **Item slot:** the item replaces what was there (or fills the empty slot) at level 1. Adjust the level with `-` / `+`, delete it with `x`.
-   - **Shop slot:** the shop now sells that item; buy it as usual, with Essence.
-
-| Key | Action |
-|---|---|
-| `↑` / `↓` | Select a slot |
-| `←` / `→` | Level −/+ of the selected item |
-| `Delete` / `Backspace` | Delete the selected item (no refund) |
-
-In the catalog, a gold corner marks items you own and a green dot marks items in the shop.
-Each item can be held once, and the number of item slots is the game's own (6 by default, more with upgrades).
-Items can't be edited on the main menu or during a battle; changes apply from the next battle.
-Some items are normally offered only on one stage ("stage N item"); you can place them anywhere, but their effect may assume that stage.
-
-Edited items stay in the run's save. Continuing such a run after a restart blocks leaderboard submissions for that session too.
-
-### Cores tab
-
-Works like the Items tab. The left side lists the run's cores (`Cores`) and, while the game is offering cores, the three cards of the core selection screen. The catalog can be filtered by rarity.
-
-- **Core slot:** the core replaces the one there (or fills the empty slot). New cores count as picked on the current wave, and appear at the end of the list. Remove one with `x` or `Delete`.
-- **Core selection card:** the card now offers that core; pick it on the selection screen as usual.
-
-Each core can be active once. Cores can't be edited on the main menu, during a battle, or while the slot machine is spinning.
-Cores you add or offer are remembered in `config/cores.lua` while they are in the run, so continuing such a run after a restart also blocks leaderboard submissions.
-
-### Imprints tab
-
-Every unit the slot machine summons passes on an imprint when another unit absorbs it (it has no effect on the unit itself until then), and a unit can hold as many imprints as its grade allows (Normal 1, Advanced 2, Rare 3, Legendary 4, Prism 5).
-This tab edits the imprints units already hold.
-
-The left side lists the units on the board (`Units`, with how many imprint slots they use) and the imprints of the selected unit.
-The right side is the catalog of every imprint, filterable by grade (the grade of the units that pass it on). Hover anything to see its effect in the game's language; hovering a unit also shows which imprint it passes on when absorbed.
-
-1. Click a unit.
-2. Click one of its imprint slots, then an imprint in the catalog to put it there.
-   A replaced imprint keeps its level; a new one starts at level 1. Adjust the level with `-` / `+`, remove it with `x`.
-   Clicking an imprint while the unit row itself is selected adds it to the unit's first empty slot.
-
-| Key | Action |
-|---|---|
-| `↑` / `↓` | Select a unit or imprint slot |
-| `←` / `→` | Level −/+ of the selected imprint |
-| `Delete` / `Backspace` | Remove the selected imprint |
-
-A gold corner in the catalog marks the selected unit's imprints. Each imprint can be held once per unit, as in the game, where absorbing a second copy levels it up instead.
-The number of slots is the unit's own; the list always shows the most any unit can have (5), with the ones beyond the selected unit's grade marked `(locked)`. Imprints can't be edited on the main menu, during a battle, while the slot machine is spinning, or while the game's own imprint choice is open.
-
-Edited imprints stay in the run's save. Continuing such a run after a restart blocks leaderboard submissions for that session too.
+- Each entry can be held once (per unit, for imprints). Slot counts are the game's own; the imprint list always shows as many rows as the largest unit can have, with the rest marked locked.
+- Editing is refused on the main menu, during a battle, while the slot machine is spinning (Cores, Imprints) and while the game's own imprint choice is open (Imprints).
+- Edited entries stay in the run's save, so continuing such a run after a restart blocks leaderboard submissions for that session too.
 
 ## Configuration
 
@@ -247,7 +200,8 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
 Other helpers:
 
 - `T.log(fmt, ...)` writes to the log.
-- `T.font(px)` returns a cached font.
+- `T.tr(key, ...)` returns the panel's own text in the game's language (add the key to `lang/en.lua` and the other `lang/*.lua`); `T.gameText(key)` returns a string from the game's own language tables. Never hardcode visible text.
+- `T.font(px)` returns a cached font that can draw the current language.
 - `T.config.save(name, tbl)` saves a config file.
 - `T.loadLua(relpath)` loads a Lua file. Use it instead of `loadfile`, which the game's bootstrap restricts to its own package.
 
