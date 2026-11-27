@@ -148,7 +148,7 @@ return function(T)
     return out
   end
 
-  local editor = T.weights.tab({
+  T.weights.tab({
     id = "unit_grades", title = function() return T.tr("tab.unit_grades") end,
     rows = rows,
     cfg = F.cfg,
@@ -159,7 +159,6 @@ return function(T)
   })
 
   function F.update(dt)
-    editor.update(dt)
     F.checkTimer = F.checkTimer - dt
     if F.checkTimer > 0 then return end
     F.checkTimer = 0.25

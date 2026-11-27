@@ -194,7 +194,7 @@ It starts the game as a debuggee, sets a breakpoint on `luaL_loadbuffer` in `lua
    })
    ```
 
-   `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button.
+   `T.panel.isShowing("<name>")` tells whether your tab is visible; `T.panel.button(rect, label, font, active, enabled)` draws a button and `T.panel.stepper(opts)` draws a unified `-` / `+` pair with hold-to-repeat.
    For a bar editor like Symbol Weights or Unit Grades, use `T.weights.tab(spec)` (see `weights.lua`); for a "slots + catalog" tab like Items, Cores or Imprints, use `T.picker.tab(spec)` (see `picker.lua`).
 
 Other helpers:

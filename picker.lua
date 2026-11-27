@@ -173,6 +173,32 @@ return function(T)
       return sec and sec.get(ctx, F.sel[2]) or nil
     end
 
+    -- run an edit on row (si, i) unless editing is locked
+    local function edit(si, i, fn)
+      local ctx, locked = spec.context()
+      if not ctx then return false end
+      if locked then tab.flash("%s", locked); return false end
+      local e = spec.sections[si].get(ctx, i)
+      if e then return fn(ctx, spec.sections[si], e) end
+      return false
+    end
+
+    local function stepLevel(si, i, dir)
+      local step = love.keyboard.isDown("lshift", "rshift") and 5 or 1
+      return edit(si, i, function(ctx, sec, e)
+        if not sec.setLevel then return false end
+        local cur = sec.level(e)
+        local nxt = math.max(1, math.min(sec.maxLevel(e), cur + dir * step))
+        if nxt == cur then return false end
+        sec.setLevel(ctx, i, nxt)
+        return true
+      end)
+    end
+
+    local function removeRow(si, i)
+      edit(si, i, function(ctx, sec) if sec.remove then sec.remove(ctx, i) end end)
+    end
+
     -- one slot row; returns true if the mouse is on it
     local function drawRow(r, d, opts, s, mx, my)
       local g = love.graphics
@@ -207,7 +233,7 @@ return function(T)
       local g = love.graphics
       local mx, my = love.mouse.getPosition()
       local ctx, locked = spec.context()
-      F.hit = { rows = {}, minus = {}, plus = {}, del = {}, cells = {}, filters = {} }
+      F.hit = { rows = {}, del = {}, cells = {}, filters = {} }
       local hover, hoverLevel
 
       local helpFont = T.font(15 * s)
@@ -259,10 +285,19 @@ return function(T)
               local b = bx
               if sec.setLevel then
                 local lv, max = sec.level(e), sec.maxLevel(e)
-                F.hit.minus[#F.hit.minus + 1] = { T.panel.button({ b, by, bw, bw }, "-", bf, false, not locked and lv > 1), si, i }
-                b = b + bw + 4 * s
-                F.hit.plus[#F.hit.plus + 1] = { T.panel.button({ b, by, bw, bw }, "+", bf, false, not locked and lv < max), si, i }
-                b = b + bw + 4 * s
+                local gap = 4 * s
+                T.panel.stepper({
+                  id = si .. ":" .. i,
+                  x = b, y = by, w = bw, h = bw, gap = gap,
+                  font = bf,
+                  canMinus = not locked and lv > 1,
+                  canPlus = not locked and lv < max,
+                  onStep = function(dir)
+                    F.sel = { si, i }
+                    return stepLevel(si, i, dir)
+                  end,
+                })
+                b = b + (bw + gap) * 2
               end
               if sec.remove then
                 F.hit.del[#F.hit.del + 1] = { T.panel.button({ b, by, bw, bw }, "x", bf, false, not locked), si, i }
@@ -403,34 +438,35 @@ return function(T)
       F.sel = { flat[at][1], flat[at][2] }
     end
 
-    -- run an edit on row (si, i) unless editing is locked
-    local function edit(si, i, fn)
-      local ctx, locked = spec.context()
-      if not ctx then return end
-      if locked then tab.flash("%s", locked); return end
-      local e = spec.sections[si].get(ctx, i)
-      if e then fn(ctx, spec.sections[si], e) end
-    end
-
-    local function stepLevel(si, i, dir)
-      edit(si, i, function(ctx, sec, e)
-        if sec.setLevel then sec.setLevel(ctx, i, math.max(1, math.min(sec.maxLevel(e), sec.level(e) + dir))) end
-      end)
-    end
-
-    local function removeRow(si, i)
-      edit(si, i, function(ctx, sec) if sec.remove then sec.remove(ctx, i) end end)
-    end
-
     function tab.keypressed(key)
       local ctx = spec.context()
       if not ctx then return end
       clampSel(ctx)
-      if key == "up" then moveSel(ctx, -1)
-      elseif key == "down" then moveSel(ctx, 1)
-      elseif key == "left" then stepLevel(F.sel[1], F.sel[2], -1)
-      elseif key == "right" then stepLevel(F.sel[1], F.sel[2], 1)
-      elseif key == "delete" or key == "backspace" then removeRow(F.sel[1], F.sel[2]) end
+      if key == "up" or key == "down" then
+        local dir = key == "up" and -1 or 1
+        moveSel(ctx, dir)
+        T.panel.hold({
+          key = key,
+          step = function()
+            local c = spec.context()
+            if not c then return false end
+            clampSel(c)
+            moveSel(c, dir)
+          end,
+        })
+      elseif key == "left" or key == "right" then
+        local dir = key == "left" and -1 or 1
+        local si, i = F.sel[1], F.sel[2]
+        if stepLevel(si, i, dir) then
+          T.panel.hold({
+            key = key, id = si .. ":" .. i, dir = dir,
+            step = function() return stepLevel(F.sel[1], F.sel[2], dir) end,
+          })
+        end
+      elseif key == "delete" or key == "backspace" then
+        T.panel.stopHold()
+        removeRow(F.sel[1], F.sel[2])
+      end
     end
 
     function tab.mousepressed(x, y, button)
@@ -448,12 +484,6 @@ return function(T)
           spec.sections[F.sel[1]].put(ctx, F.sel[2], c[2])
           return
         end
-      end
-      for _, b in ipairs(h.minus or {}) do
-        if inside(b[1], x, y) then F.sel = { b[2], b[3] }; stepLevel(b[2], b[3], -1); return end
-      end
-      for _, b in ipairs(h.plus or {}) do
-        if inside(b[1], x, y) then F.sel = { b[2], b[3] }; stepLevel(b[2], b[3], 1); return end
       end
       for _, b in ipairs(h.del or {}) do
         if inside(b[1], x, y) then removeRow(b[2], b[3]); return end
