@@ -5,6 +5,7 @@
 # Env:
 #   SB_DRYRUN=1   check the environment (64-bit PowerShell, C# compiler) without starting the game
 #   SB_SELFTEST=1 run tools/selftest.lua after startup
+#   SB_PROBE=1    run tools/probe.lua: a file-based REPL in the game (docs/investigating.md)
 $ErrorActionPreference = 'Stop'
 $Dir = $PSScriptRoot
 New-Item -ItemType Directory -Force (Join-Path $Dir 'logs'), (Join-Path $Dir 'config') | Out-Null

@@ -15,8 +15,9 @@ There is no build step, linter, or unit-test suite. All verification happens aga
 | `./launch.sh` | Launch the game with tweaks |
 | `SB_DRYRUN=1 ./launch.sh` | Check `lldb` / `python3` only; does not start the game |
 | `SB_SELFTEST=1 ./launch.sh` | Launch, then run `tools/selftest.lua`: samples the game's real symbol picker 200,000×, opens the panel with a synthetic `F8`, saves `logs/selftest-<tab>.png` for each tab |
+| `SB_PROBE=1 ./launch.sh` | Launch with `tools/probe.lua`, a file-based REPL in the game: write Lua to `logs/probe-in.lua`, read `logs/probe-out.txt` |
 
-Windows: `launch.bat` (same `SB_DRYRUN` / `SB_SELFTEST` env vars, set with `set VAR=1` first). It writes the same log files.
+Windows: `launch.bat` (same `SB_DRYRUN` / `SB_SELFTEST` / `SB_PROBE` env vars, set with `set VAR=1` first). It writes the same log files.
 
 `launch.sh` redirects all of its own output to `logs/launch.log`, so the terminal stays silent — read the logs to see results:
 
@@ -47,6 +48,7 @@ On Windows, stages 1-2 are replaced by:
 - **Use `T.loadLua(relpath)`, not `loadfile`/`require`**, for this repo's files: the game's bootstrap replaces `loadfile` with one that only accepts its encrypted package.
 - It's Lua 5.1 / LuaJIT: `loadstring`, `setfenv`, `unpack`.
 - The game's source is not available. Game internals are reached through `package.loaded["src...."]` and by scanning closures with `debug.getupvalue` / `debug.setupvalue` using structural fingerprints (e.g. the weighted picker is identified by its upvalues `(constants, {"W","A","S","M","H","D"})`; the cores module's private state is found as an upvalue of `cores.finishSpinModifiers`). These are the parts most likely to break on a game update; guard them and fail soft.
+- **Finding game internals:** follow `docs/investigating.md` (the probe, `findFns` / `string.dump` constants, upvalue walking, locating a private function by shape and verifying it on a scratch copy, changing state safely, the checklist from findings to a feature). Before launching, check that no game instance is already running (`pgrep -lf Slotbound`).
 - **Don't hardcode game content.** Read lists from the game so updates that add content need no changes here: symbols via `T.gameSymbols()` (keys of `constants.slot.symbolWeights`; `T.isSymbolList(t)` for the picker fingerprint), grades via `constants.unitGrades.order`, items via `src.game.item.getAll()`, cores via `src.game.cores.getIds()`, names and labels via the game's language tables (`T.gameText`, in the game's current language; see Languages), filters via `T.picker.filtersFrom(catalog, ...)`. Hardcode only display fallbacks (e.g. the C/U/R/L rarity names, which the game has no labels for, as `rarity.<code>` in `lang/*.lua`) and make unknown values still work.
 
 ### Languages

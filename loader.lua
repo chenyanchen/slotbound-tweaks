@@ -307,13 +307,16 @@ for _, name in ipairs(FEATURES) do
   end
 end
 
-if os.getenv("SB_SELFTEST") == "1" then
-  local ok, res = pcall(function() return T.loadLua("tools/selftest.lua")(T) end)
-  if ok and type(res) == "table" then
-    T.features.selftest = res
-    T.order[#T.order + 1] = "selftest"
-  else
-    log("selftest failed to load: %s", tostring(res))
+-- development tools, off unless asked for: SB_SELFTEST=1 / SB_PROBE=1
+for _, tool in ipairs({ { env = "SB_SELFTEST", name = "selftest" }, { env = "SB_PROBE", name = "probe" } }) do
+  if os.getenv(tool.env) == "1" then
+    local ok, res = pcall(function() return T.loadLua("tools/" .. tool.name .. ".lua")(T) end)
+    if ok and type(res) == "table" then
+      T.features[tool.name] = res
+      T.order[#T.order + 1] = tool.name
+    else
+      log("%s failed to load: %s", tool.name, tostring(res))
+    end
   end
 end
 
