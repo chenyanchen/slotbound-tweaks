@@ -1,7 +1,6 @@
 -- Weights tab: the shared bar editor behind Symbol Weights and Unit Grades.
 --
---   local ed = T.weights.tab(spec)   -- adds the tab to the F8 panel
---   ed.update(dt)                    -- call from the feature's update (hold-to-repeat, deferred save)
+--   T.weights.tab(spec)       -- adds the tab to the F8 panel
 --
 -- spec:
 --   id, title                 panel tab (title: string or function, see panel.lua)
@@ -17,12 +16,15 @@
 
 return function(T)
   local STEP, BIG_STEP = 0.01, 0.05
-  local REPEAT_DELAY, REPEAT_FAST, REPEAT_FASTEST, ACCEL_AFTER = 0.35, 0.07, 0.03, 1.5
   local inside = T.panel.inside
   local weights = {}
 
   local function round2(x) return math.floor(x * 100 + 0.5) / 100 end
   local function text(v) if type(v) == "function" then return v() end return v end
+  local function stepSize(accel)
+    local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
+    return accel and step * 5 or step
+  end
 
   function weights.tab(spec)
     local rows = {}
@@ -37,13 +39,20 @@ return function(T)
       return s
     end
 
+    local function flushSave()
+      if E.dirty then E.dirty = false; spec.save() end
+    end
+
     local function adjust(k, delta, deferSave)
       local w = cfg().weights
-      local old = w[k]
-      w[k] = math.max(0, round2((old or 0) + delta))
-      if total(w) <= 1e-9 then w[k] = old; return end -- keep one entry rollable
+      local old = tonumber(w[k]) or 0
+      local nxt = math.max(0, round2(old + delta))
+      if nxt == old then return false end
+      w[k] = nxt
+      if total(w) <= 1e-9 then w[k] = old; return false end -- keep one entry rollable
       spec.apply(true)
       if deferSave then E.dirty = true else spec.save() end
+      return true
     end
 
     local function setOnly(k)
@@ -61,37 +70,6 @@ return function(T)
     local function toggleEnabled()
       cfg().enabled = not cfg().enabled
       spec.save(); spec.apply(true)
-    end
-
-    -- hold-to-repeat (arrows and the -/+ buttons)
-    local function startHold(h)
-      h.t, h.nextAt = 0, REPEAT_DELAY
-      E.hold = h
-    end
-
-    local function stopHold()
-      E.hold = nil
-      if E.dirty then E.dirty = false; spec.save() end
-    end
-
-    local function updateHold(dt)
-      local h = E.hold
-      if not h then return end
-      local down = h.mouse and love.mouse.isDown(h.mouse) or (h.key and love.keyboard.isDown(h.key))
-      if not T.panel.isShowing(spec.id) or not down or #rows == 0 then stopHold(); return end
-      h.t = h.t + dt
-      local fires = 0
-      while h.t >= h.nextAt and fires < 8 do
-        fires = fires + 1
-        h.nextAt = h.nextAt + (h.t > ACCEL_AFTER and REPEAT_FASTEST or REPEAT_FAST)
-        if h.action == "sel" then
-          E.sel = (E.sel - 1 + h.dir) % #rows + 1
-        else
-          local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-          if h.t > ACCEL_AFTER then step = step * 5 end
-          adjust(rows[E.sel].key, h.dir * step, true)
-        end
-      end
     end
 
     function tab.draw(x, y, w, h, s)
@@ -118,7 +96,8 @@ return function(T)
       g.setFont(T.font(20 * s))
       for i, r in ipairs(rows) do
         local k = r.key
-        local pct = tot > 0 and (tonumber(wts[k]) or 0) / tot or 0
+        local curW = tonumber(wts[k]) or 0
+        local pct = tot > 0 and curW / tot or 0
         local defPct = dtot > 0 and (tonumber(defaults[k]) or 0) / dtot or nil
         if i == E.sel then
           g.setColor(1, 1, 1, 0.08); g.rectangle("fill", x - 6 * s, ry, w + 12 * s, rowH - 4 * s, 6 * s)
@@ -151,11 +130,20 @@ return function(T)
         end
         g.setColor(1, 1, 1, on and 1 or 0.5)
         g.printf(string.format("%.1f%%", pct * 100), bx + bw + 6 * s, ty, 90 * s, "right")
-        local b1 = { x + w - 84 * s, ry + 4 * s, 38 * s, rowH - 12 * s }
-        local b2 = { x + w - 40 * s, ry + 4 * s, 38 * s, rowH - 12 * s }
-        E.hit["minus" .. i], E.hit["plus" .. i], E.hit["row" .. i] = b1, b2, { x, ry, w, rowH }
-        T.panel.button(b1, "-", T.font(20 * s))
-        T.panel.button(b2, "+", T.font(20 * s))
+        local sbw, sbh, gap = 38 * s, rowH - 12 * s, 6 * s
+        local canMinus = curW > 1e-9 and (tot - curW > 1e-9 or curW > STEP + 1e-9)
+        E.hit["row" .. i] = { x, ry, w, rowH }
+        T.panel.stepper({
+          id = k,
+          x = x + w - (sbw * 2 + gap + 2 * s), y = ry + 4 * s, w = sbw, h = sbh, gap = gap,
+          font = T.font(20 * s),
+          canMinus = canMinus, canPlus = true,
+          onStep = function(dir, accel)
+            E.sel = i
+            return adjust(k, dir * stepSize(accel), true)
+          end,
+          onStop = flushSave,
+        })
         ry = ry + rowH
       end
 
@@ -171,41 +159,46 @@ return function(T)
     function tab.keypressed(key)
       if #rows == 0 then return end
       local k = rows[E.sel].key
-      local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-      if key == "up" then E.sel = (E.sel - 2) % #rows + 1; startHold({ key = key, action = "sel", dir = -1 })
-      elseif key == "down" then E.sel = E.sel % #rows + 1; startHold({ key = key, action = "sel", dir = 1 })
-      elseif key == "left" then adjust(k, -step, true); startHold({ key = key, action = "adj", dir = -1 })
-      elseif key == "right" then adjust(k, step, true); startHold({ key = key, action = "adj", dir = 1 })
-      elseif key == "0" then adjust(k, -(cfg().weights[k] or 0))
-      elseif key == "o" then setOnly(k)
-      elseif key == "r" then resetDefaults()
-      elseif key == "e" then toggleEnabled()
+      if key == "up" or key == "down" then
+        local dir = key == "up" and -1 or 1
+        E.sel = (E.sel - 1 + dir) % #rows + 1
+        T.panel.hold({
+          key = key,
+          step = function()
+            if #rows == 0 then return false end
+            E.sel = (E.sel - 1 + dir) % #rows + 1
+          end,
+        })
+      elseif key == "left" or key == "right" then
+        local dir = key == "left" and -1 or 1
+        if adjust(k, dir * stepSize(false), true) then
+          T.panel.hold({
+            key = key, id = k, dir = dir,
+            step = function(accel)
+              local cur = rows[E.sel]
+              return cur ~= nil and adjust(cur.key, dir * stepSize(accel), true)
+            end,
+            onStop = flushSave,
+          })
+        end
+      elseif key == "0" then T.panel.stopHold(); adjust(k, -(tonumber(cfg().weights[k]) or 0))
+      elseif key == "o" then T.panel.stopHold(); setOnly(k)
+      elseif key == "r" then T.panel.stopHold(); resetDefaults()
+      elseif key == "e" then T.panel.stopHold(); toggleEnabled()
       end
     end
 
     function tab.mousepressed(x, y, button)
       if button ~= 1 then return end
       if inside(E.hit.toggle, x, y) then toggleEnabled(); return end
-      local step = love.keyboard.isDown("lshift", "rshift") and BIG_STEP or STEP
-      for i, r in ipairs(rows) do
-        if inside(E.hit["minus" .. i], x, y) then
-          E.sel = i; adjust(r.key, -step, true); startHold({ mouse = button, action = "adj", dir = -1 }); return
-        end
-        if inside(E.hit["plus" .. i], x, y) then
-          E.sel = i; adjust(r.key, step, true); startHold({ mouse = button, action = "adj", dir = 1 }); return
-        end
+      for i = 1, #rows do
         if inside(E.hit["row" .. i], x, y) then E.sel = i; return end
       end
     end
 
     T.panel.addTab(tab)
 
-    local ed = { tab = tab, _state = E }
-    function ed.update(dt)
-      updateHold(dt)
-      if not E.hold and E.dirty then E.dirty = false; spec.save() end
-    end
-    return ed
+    return { tab = tab, _state = E }
   end
 
   T.weights = weights
